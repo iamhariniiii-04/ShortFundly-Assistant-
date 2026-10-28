@@ -32,10 +32,11 @@ function startBackend() {
 
     console.log('Spawning Python Flask backend...');
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    const appPath = path.join(__dirname, '..', 'backend', 'app.py');
+    const basePath = app.isPackaged ? process.resourcesPath : path.join(__dirname, '..');
+    const appPath = path.join(basePath, 'backend', 'app.py');
 
     backendProcess = spawn(pythonCmd, [appPath], {
-      cwd: path.join(__dirname, '..'),
+      cwd: basePath,
       stdio: 'inherit'
     });
 
@@ -47,6 +48,19 @@ function startBackend() {
       console.log(`Backend exited with code ${code} and signal ${signal}`);
     });
   });
+}
+
+function killBackend() {
+  if (backendProcess && backendProcess.pid) {
+    try {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/pid', backendProcess.pid.toString(), '/f', '/t']);
+      } else {
+        backendProcess.kill('SIGINT');
+      }
+    } catch (e) {}
+    backendProcess = null;
+  }
 }
 
 function createWindow() {
@@ -98,16 +112,12 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (backendProcess) {
-    backendProcess.kill();
-  }
+  killBackend();
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
-  if (backendProcess) {
-    backendProcess.kill();
-  }
+  killBackend();
 });

@@ -49,9 +49,29 @@
       "electron/**/*",
       "public/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc"
+        ]
+      }
+    ],
     "win": {
-      "target": "nsis",
-      "icon": "public/logo.png"
+      "target": ["nsis", "portable"],
+      "icon": "public/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ShortFundly Voice Assistant",
+      "uninstallDisplayName": "ShortFundly Voice Assistant"
     }
   }
 }

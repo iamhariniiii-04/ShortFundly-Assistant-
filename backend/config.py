@@ -20,6 +20,9 @@ class Config:
     HOST = os.environ.get('HOST', '0.0.0.0')
     DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 
+    # AI Provider selector: 'auto', 'gemini', 'ollama', 'huggingface', 'offline'
+    AI_PROVIDER = os.environ.get('AI_PROVIDER', 'auto').strip()
+
     # Hugging Face Inference
     HF_API_KEY = os.environ.get('HF_API_KEY', '').strip()
     HF_MODEL_NAME = os.environ.get('HF_MODEL_NAME', 'meta-llama/Llama-3.1-8B-Instruct').strip()

@@ -14,8 +14,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from backend.config import Config
-from backend.services.hf_service import HuggingFaceService
-from backend.services.gemini_service import GeminiSearchService
+from backend.services.ai_provider import AIProviderManager
 from backend.services.weather_service import WeatherService
 from backend.services.sherpa_service import SherpaSpeechService
 from backend.services.offline_command_service import OfflineCommandService
@@ -24,28 +23,21 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize services
-hf_service = HuggingFaceService()
-gemini_service = GeminiSearchService()
+ai_manager = AIProviderManager()
 weather_service = WeatherService()
 sherpa_service = SherpaSpeechService()
 offline_service = OfflineCommandService()
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    provider_status = ai_manager.get_provider_status()
     return jsonify({
         "status": "online",
         "app": "ShortFundly Voice Assistant",
         "version": "1.0.0",
         "timestamp": datetime.now().isoformat(),
         "services": {
-            "huggingface": {
-                "configured": hf_service.is_configured(),
-                "model": hf_service.model
-            },
-            "gemini_search": {
-                "configured": gemini_service.is_configured(),
-                "model": gemini_service.model
-            },
+            "ai_providers": provider_status,
             "openweather": {
                 "configured": weather_service.is_configured()
             },
@@ -118,71 +110,38 @@ def chat_router():
             "provider": "ShortFundly Offline Core"
         })
 
-    # 3. Live Search Intent (Gemini with Google Search Grounding)
+    # 3. Conversational AI & Live Search through AI Provider Abstraction
     search_keywords = ["search", "google", "latest news", "current score", "who won", "stock price", "today news", "innaiku news"]
     wants_search = force_search or any(k in clean_lower for k in search_keywords)
+    preferred_provider = data.get('provider', getattr(Config, 'AI_PROVIDER', 'auto'))
 
-    if wants_search and gemini_service.is_configured():
-        search_res = gemini_service.search_and_answer(message)
-        if search_res.get("success"):
-            return jsonify({
-                "success": True,
-                "reply": search_res.get("reply"),
-                "sources": search_res.get("sources", []),
-                "type": "web_search",
-                "provider": "Google Gemini with Google Search Grounding"
-            })
+    ai_res = ai_manager.chat(
+        message=message,
+        conversation_history=history,
+        language=language,
+        use_search=wants_search,
+        preferred_provider=preferred_provider
+    )
 
-    # 4. Main Conversational AI (Hugging Face)
-    if hf_service.is_configured():
-        hf_res = hf_service.chat(message, conversation_history=history, language=language)
-        if hf_res.get("success"):
-            return jsonify({
-                "success": True,
-                "reply": hf_res.get("reply"),
-                "type": "conversation",
-                "provider": "Hugging Face Inference"
-            })
-
-    # 5. Fallback to Gemini if HF not configured or errored
-    if gemini_service.is_configured():
-        search_res = gemini_service.search_and_answer(message)
-        if search_res.get("success"):
-            return jsonify({
-                "success": True,
-                "reply": search_res.get("reply"),
-                "sources": search_res.get("sources", []),
-                "type": "conversation",
-                "provider": "Google Gemini"
-            })
-        elif not hf_service.is_configured() or (hf_service.is_configured() and 'hf_res' in locals() and not hf_res.get("success")):
-            # Return the provider's specific error message
-            provider_reply = search_res.get("reply") or (hf_res.get("reply") if 'hf_res' in locals() else None)
-            if provider_reply:
-                return jsonify({
-                    "success": False,
-                    "reply": provider_reply,
-                    "type": "provider_notice"
-                })
-
-    # If HF had an error and Gemini wasn't able to answer
-    if hf_service.is_configured() and 'hf_res' in locals() and not hf_res.get("success"):
+    if ai_res.get("success"):
         return jsonify({
-            "success": False,
-            "reply": hf_res.get("reply") or hf_res.get("message"),
-            "type": "provider_notice"
+            "success": True,
+            "reply": ai_res.get("reply"),
+            "sources": ai_res.get("sources", []),
+            "model": ai_res.get("model"),
+            "provider": ai_res.get("provider"),
+            "type": "web_search" if wants_search and ai_res.get("sources") else "conversation"
         })
 
-    # 6. Inform user clearly if online providers need API keys
+    # Return provider notice / fallback explanation
     return jsonify({
         "success": False,
-        "error": "API_KEYS_REQUIRED",
-        "reply": (
-            "I am ready to chat, but my online AI keys have not been configured yet. "
-            "You can add your Hugging Face or Gemini API key in backend/.env, "
-            "or switch to Offline Mode to ask for time, date, math calculations, and app commands."
+        "error": ai_res.get("error", "AI_UNAVAILABLE"),
+        "reply": ai_res.get("reply") or ai_res.get("message") or (
+            "I could not connect to an online AI provider. You can switch to Offline Mode "
+            "for local commands, or check your API key / local Ollama model."
         ),
-        "needs_config": True
+        "type": "provider_notice"
     })
 
 @app.route('/api/search', methods=['POST'])
@@ -191,7 +150,7 @@ def search_endpoint():
     query = data.get('query', '').strip()
     if not query:
         return jsonify({"success": False, "error": "Query required"}), 400
-    res = gemini_service.search_and_answer(query)
+    res = ai_manager.gemini.chat(query, use_search=True)
     return jsonify(res)
 
 @app.route('/api/weather', methods=['GET'])

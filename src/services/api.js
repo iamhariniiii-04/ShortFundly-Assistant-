@@ -2,11 +2,19 @@ const DEFAULT_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhos
 
 class ApiService {
   constructor() {
-    this.baseUrl = localStorage.getItem('shortfundly_backend_url') || DEFAULT_BACKEND_URL;
+    const saved = localStorage.getItem('shortfundly_backend_url');
+    if (saved) {
+      this.baseUrl = saved;
+    } else if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      // On mobile native, provide the laptop LAN IP by default
+      this.baseUrl = 'http://10.191.30.168:5000';
+    } else {
+      this.baseUrl = DEFAULT_BACKEND_URL;
+    }
   }
 
   setBaseUrl(url) {
-    this.baseUrl = url.replace(/\/+$/, '');
+    this.baseUrl = (url || '').trim().replace(/\/+$/, '');
     localStorage.setItem('shortfundly_backend_url', this.baseUrl);
   }
 
@@ -16,7 +24,10 @@ class ApiService {
 
   async checkHealth() {
     try {
-      const res = await fetch(`${this.baseUrl}/api/health`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${this.baseUrl}/api/health`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -26,6 +37,8 @@ class ApiService {
 
   async sendMessage(message, { mode = 'auto', history = [], language = 'auto', useSearch = false } = {}) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       const res = await fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,14 +48,19 @@ class ApiService {
           history,
           language,
           use_search: useSearch
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       return await res.json();
     } catch (err) {
+      const isMobile = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
       return {
         success: false,
         error: err.message,
-        reply: `Network connection error: Unable to reach backend at ${this.baseUrl}. Please check that Python Flask is running.`
+        reply: isMobile 
+          ? `Could not reach server at ${this.baseUrl}. Open Settings to configure your computer's Wi-Fi IP address (e.g. http://10.191.30.168:5000) or switch to Offline Mode.`
+          : `Network connection error: Unable to reach backend at ${this.baseUrl}. Please verify that the Python backend is running.`
       };
     }
   }
