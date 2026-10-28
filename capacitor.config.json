@@ -1,0 +1,16 @@
+{
+  "appId": "com.shortfundly.voiceassistant",
+  "appName": "ShortFundly Voice Assistant",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "Device": {},
+    "Network": {},
+    "Haptics": {},
+    "TextToSpeech": {}
+  }
+}
