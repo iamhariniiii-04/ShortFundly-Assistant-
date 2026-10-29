@@ -1,9 +1,10 @@
 import { NativeModules } from 'react-native';
 import * as Linking from 'expo-linking';
-import * as Contacts from 'expo-contacts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HapticService } from './hapticService';
 
 const { BroBridge } = NativeModules;
+const CONTACTS_STORAGE_KEY = '@hey_bro_voice_contacts';
 
 export const CallMessageService = {
   // Parse call intent
@@ -32,7 +33,36 @@ export const CallMessageService = {
     };
   },
 
-  // Search device contacts for a name (mommy, mummy, dad, amma, etc.)
+  // Save a voice contact mapping (e.g. mommy -> 9876543210)
+  async saveContact(name, number) {
+    try {
+      const existing = await this.getSavedContacts();
+      const cleanName = name.toLowerCase().trim();
+      const cleanNumber = number.replace(/[^\d+]/g, '');
+      existing[cleanName] = cleanNumber;
+      await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(existing));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  async getSavedContacts() {
+    try {
+      const raw = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {
+        mommy: '',
+        mummy: '',
+        mom: '',
+        dad: '',
+        daddy: '',
+      };
+    } catch (e) {
+      return {};
+    }
+  },
+
+  // Search local voice contacts for a name (mommy, mummy, dad, amma, etc.)
   async lookupContact(nameOrQuery) {
     const clean = nameOrQuery.toLowerCase().trim();
 
@@ -45,51 +75,35 @@ export const CallMessageService = {
     }
 
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status === 'granted') {
-        const { data } = await Contacts.getContactsAsync({
-          fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
-        });
+      const contacts = await this.getSavedContacts();
 
-        if (data && data.length > 0) {
-          // Normalize common aliases
-          const aliases = [clean];
-          if (clean.includes('momm') || clean.includes('mumm') || clean.includes('mom')) {
-            aliases.push('mom', 'mummy', 'mommy', 'mother', 'amma', 'maa');
-          } else if (clean.includes('dad') || clean.includes('father') || clean.includes('appa')) {
-            aliases.push('dad', 'daddy', 'father', 'appa', 'paa');
-          }
+      // Normalize common aliases
+      const aliases = [clean];
+      if (clean.includes('momm') || clean.includes('mumm') || clean.includes('mom')) {
+        aliases.push('mom', 'mummy', 'mommy', 'mother', 'amma', 'maa');
+      } else if (clean.includes('dad') || clean.includes('father') || clean.includes('appa')) {
+        aliases.push('dad', 'daddy', 'father', 'appa', 'paa');
+      }
 
-          // 1. Exact or Alias match
-          for (const c of data) {
-            if (!c.name || !c.phoneNumbers || c.phoneNumbers.length === 0) continue;
-            const contactName = c.name.toLowerCase();
-            for (const alias of aliases) {
-              if (contactName === alias || contactName.includes(alias) || alias.includes(contactName)) {
-                return {
-                  name: c.name,
-                  phoneNumber: c.phoneNumbers[0].number.replace(/[^\d+]/g, ''),
-                };
-              }
-            }
-          }
-
-          // 2. Fuzzy substring match
-          for (const c of data) {
-            if (!c.name || !c.phoneNumbers || c.phoneNumbers.length === 0) continue;
-            const contactName = c.name.toLowerCase();
-            if (contactName.includes(clean) || clean.includes(contactName)) {
-              return {
-                name: c.name,
-                phoneNumber: c.phoneNumbers[0].number.replace(/[^\d+]/g, ''),
-              };
-            }
-          }
+      for (const alias of aliases) {
+        if (contacts[alias]) {
+          return {
+            name: nameOrQuery,
+            phoneNumber: contacts[alias],
+          };
         }
       }
-    } catch (e) {
-      console.warn('[CallMessageService] Contact lookup note:', e.message);
-    }
+
+      // Check partial keys
+      for (const [key, num] of Object.entries(contacts)) {
+        if (num && (clean.includes(key) || key.includes(clean))) {
+          return {
+            name: nameOrQuery,
+            phoneNumber: num,
+          };
+        }
+      }
+    } catch (e) {}
 
     return null;
   },
@@ -125,7 +139,7 @@ export const CallMessageService = {
   async prepareCallConfirmation(target, language = 'en') {
     HapticService.onConfirmationRequired();
 
-    // Look up contact number
+    // Look up saved contact number
     const contact = await this.lookupContact(target);
     const resolvedName = contact ? contact.name : target;
     const resolvedNumber = contact ? contact.phoneNumber : target.replace(/[^\d+]/g, '');
@@ -166,16 +180,21 @@ export const CallMessageService = {
     // If still no digits, try contact lookup once more
     if (!phoneNumber) {
       const c = await this.lookupContact(targetName);
-      if (c) {
+      if (c && c.phoneNumber) {
         phoneNumber = c.phoneNumber;
       }
     }
 
     if (!phoneNumber) {
-      HapticService.onError();
+      // If no number known, open dialer directly
+      if (BroBridge && typeof BroBridge.directCall === 'function') {
+        await BroBridge.directCall('');
+      } else {
+        await Linking.openURL('tel:');
+      }
       return {
-        success: false,
-        reply: `I could not find a phone number for ${targetName}. Please tell me their number.`,
+        success: true,
+        reply: `Opening dialer for ${targetName}.`,
       };
     }
 

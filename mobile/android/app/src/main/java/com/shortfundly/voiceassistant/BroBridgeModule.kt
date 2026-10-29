@@ -103,16 +103,9 @@ class BroBridgeModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     fun directCall(phoneNumber: String, promise: Promise) {
         try {
             val clean = phoneNumber.replace(Regex("[^0-9+]"), "")
-            val intent = if (ContextCompat.checkSelfPermission(reactApplicationContext, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
-                Intent(Intent.ACTION_CALL).apply {
-                    data = Uri.parse("tel:$clean")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            } else {
-                Intent(Intent.ACTION_DIAL).apply {
-                    data = Uri.parse("tel:$clean")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = Uri.parse("tel:$clean")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             reactApplicationContext.startActivity(intent)
             promise.resolve(true)

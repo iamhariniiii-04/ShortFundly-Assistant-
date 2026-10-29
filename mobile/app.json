@@ -37,10 +37,6 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS",
-        "READ_CONTACTS",
-        "CALL_PHONE",
-        "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_MICROPHONE",
         "INTERNET",
         "ACCESS_NETWORK_STATE"
       ]
