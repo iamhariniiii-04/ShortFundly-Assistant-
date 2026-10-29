@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Bro Voice Assistant",
+    "slug": "bro-voice-assistant",
+    "owner": "subha04s-team",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "brovoice",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#000000",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.shortfundly.voiceassistant",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Hey Bro uses speech recognition to understand your voice commands.",
+        "NSMicrophoneUsageDescription": "Hey Bro needs microphone access to listen for 'Hey Bro' and process your requests."
+      }
+    },
+    "android": {
+      "package": "com.shortfundly.voiceassistant",
+      "adaptiveIcon": {
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "CALL_PHONE",
+        "SEND_SMS",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FFD600",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "80a9b8b9-4fcc-4535-87bf-e272cae39382"
+      }
+    }
+  }
+}
