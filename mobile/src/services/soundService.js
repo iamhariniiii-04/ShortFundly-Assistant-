@@ -1,46 +1,32 @@
-import { Audio } from 'expo-av';
+import { HapticService } from './hapticService';
 
 class SoundManager {
   constructor() {
-    this.soundObjects = {};
-    this.isAudioConfigured = false;
+    this.isAudioConfigured = true;
   }
 
   async init() {
-    if (this.isAudioConfigured) return;
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-      this.isAudioConfigured = true;
-    } catch (e) {
-      console.warn('AudioMode initialization note:', e);
-    }
+    return Promise.resolve();
   }
 
-  // Play microphone opening earcon
+  // Play microphone opening earcon (tactile pulse)
   async playMicOpen() {
-    await this.init();
-    // Soft tone feedback
+    await HapticService.onMicOpen();
   }
 
   // Play microphone closing earcon
   async playMicClose() {
-    await this.init();
+    await HapticService.onMicClose();
   }
 
   // Play success tone
   async playSuccess() {
-    await this.init();
+    await HapticService.onSuccess();
   }
 
   // Play warning tone
   async playWarning() {
-    await this.init();
+    await HapticService.onConfirmationRequired();
   }
 }
 

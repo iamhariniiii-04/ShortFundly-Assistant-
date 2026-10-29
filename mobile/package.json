@@ -16,15 +16,15 @@
     "expo-linking": "^58.0.3",
     "expo-constants": "^58.0.4",
     "expo-keep-awake": "^58.0.3",
-    "expo-av": "~16.0.8",
+    "expo-system-ui": "^58.0.3",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "lucide-react-native": "^1.63.0",
     "react-native-svg": "^15.16.0"
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "build:apk": "eas build -p android --profile preview",
     "build:prod": "eas build -p android --profile production"
