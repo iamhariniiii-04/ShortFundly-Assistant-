@@ -45,37 +45,8 @@ export function AccessibleHeader({
         </View>
       </View>
 
-      {/* Header Controls: Battery & Settings */}
+      {/* Header Controls: Settings */}
       <View style={styles.controlsRow}>
-        {/* Battery Indicator (Tap to announce aloud) */}
-        <TouchableOpacity
-          onPress={onBatteryPress}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`Battery is at ${batteryLevel} percent. Tap to hear full battery report.`}
-          style={[
-            styles.batteryButton,
-            isBatteryLow && { borderColor: COLORS.brandRed, backgroundColor: COLORS.brandRedDark },
-          ]}
-        >
-          {isCharging ? (
-            <BatteryCharging size={20} color={COLORS.success} />
-          ) : (
-            <Battery
-              size={20}
-              color={isBatteryLow ? COLORS.brandRed : COLORS.textPrimary}
-            />
-          )}
-          <Text
-            style={[
-              styles.batteryText,
-              isBatteryLow && { color: COLORS.brandRed, fontWeight: '800' },
-            ]}
-          >
-            {batteryLevel}%
-          </Text>
-        </TouchableOpacity>
-
         {/* Accessible Settings */}
         <TouchableOpacity
           onPress={onSettingsPress}

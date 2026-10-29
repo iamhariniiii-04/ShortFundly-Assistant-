@@ -1,11 +1,15 @@
+import { NativeModules } from 'react-native';
 import * as Linking from 'expo-linking';
+import * as Contacts from 'expo-contacts';
 import { HapticService } from './hapticService';
+
+const { BroBridge } = NativeModules;
 
 export const CallMessageService = {
   // Parse call intent
   parseCallIntent(query) {
     const q = query.toLowerCase().trim();
-    // Patterns: "call 9876543210", "call John", "make a call to Dad", "Dad ku call pannu"
+    // Patterns: "call mommy", "call 9876543210", "call Dad", "make a call to Dad", "Dad ku call pannu"
     const callMatch = q.match(/(?:call|dial|ring|phone|அழைப்பு செய்|அழை)\s+(?:to\s+)?(.+)/i);
     const tanglishMatch = q.match(/(.+?)(?:\s+ku\s+call\s+pannu|\s+call\s+pannu)/i);
 
@@ -28,10 +32,71 @@ export const CallMessageService = {
     };
   },
 
+  // Search device contacts for a name (mommy, mummy, dad, amma, etc.)
+  async lookupContact(nameOrQuery) {
+    const clean = nameOrQuery.toLowerCase().trim();
+
+    // If query is already numeric, return as-is
+    if (/^[\d+\s\-()]{6,}$/.test(clean)) {
+      return {
+        name: nameOrQuery,
+        phoneNumber: clean.replace(/[^\d+]/g, ''),
+      };
+    }
+
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+        });
+
+        if (data && data.length > 0) {
+          // Normalize common aliases
+          const aliases = [clean];
+          if (clean.includes('momm') || clean.includes('mumm') || clean.includes('mom')) {
+            aliases.push('mom', 'mummy', 'mommy', 'mother', 'amma', 'maa');
+          } else if (clean.includes('dad') || clean.includes('father') || clean.includes('appa')) {
+            aliases.push('dad', 'daddy', 'father', 'appa', 'paa');
+          }
+
+          // 1. Exact or Alias match
+          for (const c of data) {
+            if (!c.name || !c.phoneNumbers || c.phoneNumbers.length === 0) continue;
+            const contactName = c.name.toLowerCase();
+            for (const alias of aliases) {
+              if (contactName === alias || contactName.includes(alias) || alias.includes(contactName)) {
+                return {
+                  name: c.name,
+                  phoneNumber: c.phoneNumbers[0].number.replace(/[^\d+]/g, ''),
+                };
+              }
+            }
+          }
+
+          // 2. Fuzzy substring match
+          for (const c of data) {
+            if (!c.name || !c.phoneNumbers || c.phoneNumbers.length === 0) continue;
+            const contactName = c.name.toLowerCase();
+            if (contactName.includes(clean) || clean.includes(contactName)) {
+              return {
+                name: c.name,
+                phoneNumber: c.phoneNumbers[0].number.replace(/[^\d+]/g, ''),
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[CallMessageService] Contact lookup note:', e.message);
+    }
+
+    return null;
+  },
+
   // Parse message intent
   parseMessageIntent(query) {
     const q = query.trim();
-    // Patterns: "send message to [name] saying [text]", "message [name] [text]", "text [name] [text]", "whatsapp [name] [text]"
     const isWhatsApp = /whatsapp/i.test(q);
 
     const match1 = q.match(/(?:send\s+a?\s*message|message|text|whatsapp)\s+to\s+([^,]+?)\s+(?:saying|that|with text|message)\s+(.+)/i);
@@ -49,7 +114,7 @@ export const CallMessageService = {
         type: 'message',
         platform: isWhatsApp ? 'whatsapp' : 'sms',
         recipient: match2[1].trim(),
-        content: '', // Need content
+        content: '',
       };
     }
 
@@ -57,53 +122,93 @@ export const CallMessageService = {
   },
 
   // Initiate confirmation prompt for a call
-  prepareCallConfirmation(target, language = 'en') {
+  async prepareCallConfirmation(target, language = 'en') {
     HapticService.onConfirmationRequired();
-    let prompt = `You want to call ${target}. Should I place the call now? Say Yes or No.`;
+
+    // Look up contact number
+    const contact = await this.lookupContact(target);
+    const resolvedName = contact ? contact.name : target;
+    const resolvedNumber = contact ? contact.phoneNumber : target.replace(/[^\d+]/g, '');
+
+    let prompt = `You want to call ${resolvedName}. Should I place the call now? Say Yes or No.`;
     if (language === 'ta') {
-      prompt = `நீங்கள் ${target} என்பவரை அழைக்க விரும்புகிறீர்கள். இப்போது அழைக்கவா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`;
+      prompt = `நீங்கள் ${resolvedName} என்பவரை அழைக்க விரும்புகிறீர்கள். இப்போது அழைக்கவா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`;
     } else if (language === 'tanglish') {
-      prompt = `${target} ku call panna porom bro. Call panna vaa? Yes or No sollunga.`;
+      prompt = `${resolvedName} ku call panna porom bro. Call panna vaa? Yes or No sollunga.`;
     }
 
     return {
       requiresConfirmation: true,
       pendingAction: 'CALL',
-      payload: { target },
+      payload: {
+        target: resolvedName,
+        phoneNumber: resolvedNumber,
+      },
       prompt,
     };
   },
 
   // Execute phone call after user confirmed "Yes"
-  async executeCall(target) {
+  async executeCall(payloadOrTarget) {
     HapticService.onProcessing();
-    // Clean target phone string
-    const cleanNumber = target.replace(/[^\d+]/g, '');
-    const url = `tel:${cleanNumber || target}`;
+
+    let targetName = 'contact';
+    let phoneNumber = '';
+
+    if (typeof payloadOrTarget === 'object' && payloadOrTarget !== null) {
+      targetName = payloadOrTarget.target || 'contact';
+      phoneNumber = payloadOrTarget.phoneNumber || '';
+    } else {
+      targetName = payloadOrTarget;
+      phoneNumber = payloadOrTarget.replace(/[^\d+]/g, '');
+    }
+
+    // If still no digits, try contact lookup once more
+    if (!phoneNumber) {
+      const c = await this.lookupContact(targetName);
+      if (c) {
+        phoneNumber = c.phoneNumber;
+      }
+    }
+
+    if (!phoneNumber) {
+      HapticService.onError();
+      return {
+        success: false,
+        reply: `I could not find a phone number for ${targetName}. Please tell me their number.`,
+      };
+    }
 
     try {
+      // 1. Try Native Android Bridge for direct call
+      if (BroBridge && typeof BroBridge.directCall === 'function') {
+        await BroBridge.directCall(phoneNumber);
+        HapticService.onSuccess();
+        return {
+          success: true,
+          reply: `Calling ${targetName} now.`,
+        };
+      }
+
+      // 2. Linking fallback
+      const url = `tel:${phoneNumber}`;
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
         await Linking.openURL(url);
         HapticService.onSuccess();
         return {
           success: true,
-          reply: `Dialing ${target} now.`,
-        };
-      } else {
-        HapticService.onError();
-        return {
-          success: false,
-          reply: `Could not open dialer for ${target}.`,
+          reply: `Calling ${targetName} now.`,
         };
       }
     } catch (e) {
-      HapticService.onError();
-      return {
-        success: false,
-        reply: `Error making call: ${e.message}`,
-      };
+      console.warn('Call execution error:', e);
     }
+
+    return {
+      success: false,
+      reply: `Could not place call to ${targetName}.`,
+    };
   },
 
   // Initiate confirmation prompt for sending a message
@@ -129,7 +234,10 @@ export const CallMessageService = {
   // Execute sending message
   async executeMessage(recipient, content, platform = 'sms') {
     HapticService.onProcessing();
-    const cleanNumber = recipient.replace(/[^\d+]/g, '');
+
+    // Check if recipient is a name in contacts
+    const contact = await this.lookupContact(recipient);
+    const cleanNumber = contact ? contact.phoneNumber : recipient.replace(/[^\d+]/g, '');
 
     try {
       if (platform === 'whatsapp') {

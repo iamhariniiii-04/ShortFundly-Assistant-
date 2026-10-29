@@ -32,6 +32,9 @@ export function useVoiceAssistant() {
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
 
+  const silenceTimeoutRef = useRef(null);
+  const accumulatedTranscriptRef = useRef('');
+
   // Load preferences from storage
   useEffect(() => {
     (async () => {
@@ -47,6 +50,10 @@ export function useVoiceAssistant() {
 
   // Stop Listening / Cancel
   const stopListening = useCallback(async () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
     await SpeechRecognitionService.stop();
     HapticService.onMicClose();
     setState(ASSISTANT_STATE.IDLE);
@@ -57,6 +64,11 @@ export function useVoiceAssistant() {
     if (!utterance || !utterance.trim()) {
       setState(ASSISTANT_STATE.IDLE);
       return;
+    }
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
     }
 
     const clean = utterance.trim();
@@ -106,14 +118,20 @@ export function useVoiceAssistant() {
       await SpeechService.stop();
     }
 
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    accumulatedTranscriptRef.current = '';
+
     HapticService.onMicOpen();
-    setState(ASSISTANT_STATE.LISTENING);
+    setState((prev) => (prev === ASSISTANT_STATE.AWAITING_CONFIRMATION ? ASSISTANT_STATE.AWAITING_CONFIRMATION : ASSISTANT_STATE.LISTENING));
 
     if (SpeechRecognitionService.isAvailable()) {
       const langCode = preferencesRef.current.language === 'ta' ? 'ta-IN' : 'en-US';
       await SpeechRecognitionService.start({
         lang: langCode,
-        continuous: false,
+        continuous: true,
         autoRestart: false,
       });
     }
@@ -127,7 +145,9 @@ export function useVoiceAssistant() {
         setState(ASSISTANT_STATE.SPEAKING);
       } else if (stateRef.current === ASSISTANT_STATE.SPEAKING) {
         if (pendingActionRef.current) {
+          // Immediately listen for voice confirmation ("Yes" / "No")
           setState(ASSISTANT_STATE.AWAITING_CONFIRMATION);
+          startListening();
         } else {
           setState(ASSISTANT_STATE.IDLE);
           // Resume wake word listening once speaking completes
@@ -159,17 +179,33 @@ export function useVoiceAssistant() {
       WakeWordService.startService(preferences.language);
     }
 
-    // 4. Speech Recognition result listener
+    // 4. Speech Recognition result listener with 1500ms silence pause detection
     const unsubRecognition = SpeechRecognitionService.addResultListener(({ transcript, isFinal }) => {
-      if (stateRef.current === ASSISTANT_STATE.LISTENING && transcript) {
+      const currentState = stateRef.current;
+      if ((currentState === ASSISTANT_STATE.LISTENING || currentState === ASSISTANT_STATE.AWAITING_CONFIRMATION) && transcript) {
         setLastQuery(transcript);
-        if (isFinal) {
-          processUtterance(transcript);
+        accumulatedTranscriptRef.current = transcript;
+
+        // Reset silence timer on every chunk heard
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
         }
+
+        // Wait for 1500ms of user silence/pause before executing command
+        silenceTimeoutRef.current = setTimeout(() => {
+          const finalUtterance = accumulatedTranscriptRef.current;
+          accumulatedTranscriptRef.current = '';
+          if (finalUtterance && finalUtterance.trim().length > 0) {
+            processUtterance(finalUtterance);
+          }
+        }, 1500);
       }
     });
 
     return () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
       unsubscribeSpeech();
       unsubRecognition();
       BatteryService.stopMonitor();
@@ -179,7 +215,7 @@ export function useVoiceAssistant() {
 
   // Tap-to-Talk / Orb toggle
   const toggleListening = useCallback(async () => {
-    if (state === ASSISTANT_STATE.LISTENING) {
+    if (state === ASSISTANT_STATE.LISTENING || state === ASSISTANT_STATE.AWAITING_CONFIRMATION) {
       await stopListening();
     } else if (state === ASSISTANT_STATE.SPEAKING) {
       // Interrupt immediately
@@ -202,6 +238,9 @@ export function useVoiceAssistant() {
 
   // Stop / Interrupt speech
   const stopSpeech = useCallback(async () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+    }
     await SpeechService.stop();
     HapticService.onMicClose();
     setState(ASSISTANT_STATE.IDLE);

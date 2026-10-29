@@ -73,23 +73,6 @@ export function SpokenDisplay({
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* General Voice Info & Accessibility Shortcuts */}
-      <View
-        style={styles.gestureGuideCard}
-        accessible={true}
-        accessibilityLabel="General Voice Guide: Tap orb or say Hey Bro. Double tap screen to repeat. Tap screen to stop."
-      >
-        <Text style={styles.guideTitle}>GENERAL INFO & COMMANDS</Text>
-        <Text style={styles.guideText}>• Say "Hey Bro" or tap the Red Orb to speak</Text>
-        <Text style={styles.guideText}>• "What is my battery?" (Announces battery %)</Text>
-        <Text style={styles.guideText}>• "Open WhatsApp", "Open Camera", "Open Settings"</Text>
-        <Text style={styles.guideText}>• "Read my notifications" (Reads WhatsApp & SMS)</Text>
-        <Text style={styles.guideText}>• "Remind me to take medicine at 8 PM"</Text>
-        <Text style={styles.guideText}>• "What is the time?" / "What is today's date?"</Text>
-        <Text style={styles.guideText}>• Double-tap anywhere on screen to repeat</Text>
-        <Text style={styles.guideText}>• Tap screen while speaking to stop immediately</Text>
-      </View>
     </ScrollView>
   );
 }

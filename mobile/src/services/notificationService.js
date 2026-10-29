@@ -1,39 +1,16 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, DEFAULT_PREFERENCES } from '../config/constants';
 import { SpeechService } from './speechService';
 import { HapticService } from './hapticService';
 
+const { BroBridge } = NativeModules;
+
 class NotificationReaderManager {
   constructor() {
     this.allowedApps = new Set(DEFAULT_PREFERENCES.allowedNotificationApps);
-    this.queuedNotifications = [
-      {
-        id: '1',
-        appName: 'WhatsApp',
-        sender: 'Amma (Mom)',
-        text: 'Call me when you are free, bro.',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-        read: false,
-      },
-      {
-        id: '2',
-        appName: 'Messages',
-        sender: 'State Bank of India',
-        text: 'Your account has been credited with INR 5,000. Balance is INR 14,250.',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-        read: false,
-      },
-      {
-        id: '3',
-        appName: 'Phone',
-        sender: 'Doctor Clinic',
-        text: 'Missed call from Doctor Clinic at 10:30 AM.',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-        read: false,
-      },
-    ];
+    this.queuedNotifications = [];
   }
 
   async loadSettings() {
@@ -81,6 +58,7 @@ class NotificationReaderManager {
   }
 
   isAppAllowed(appName) {
+    if (!appName) return true;
     const key = appName.toLowerCase();
     return (
       this.allowedApps.has(key) ||
@@ -103,11 +81,34 @@ class NotificationReaderManager {
     return false;
   }
 
-  // Read all unread notifications aloud
+  // Read all unread notifications aloud (from WhatsApp, SMS, Phone)
   async readNotifications(language = 'en') {
     await this.loadSettings();
 
-    const unread = this.queuedNotifications.filter((n) => !n.read && this.isAppAllowed(n.appName));
+    let allNotifs = [];
+
+    // 1. Fetch real captured notifications from Native Android NotificationListener
+    if (BroBridge && typeof BroBridge.getCapturedNotifications === 'function') {
+      try {
+        const nativeList = await BroBridge.getCapturedNotifications();
+        if (Array.isArray(nativeList) && nativeList.length > 0) {
+          allNotifs = nativeList;
+          // Clear after reading so they aren't repeated
+          await BroBridge.clearCapturedNotifications();
+        }
+      } catch (e) {
+        console.warn('Native notification fetch error:', e);
+      }
+    }
+
+    // 2. Fallback to queued local notifications
+    if (allNotifs.length === 0 && this.queuedNotifications.length > 0) {
+      allNotifs = this.queuedNotifications.filter((n) => !n.read);
+      this.queuedNotifications.forEach((n) => (n.read = true));
+    }
+
+    // Filter allowed apps
+    const unread = allNotifs.filter((n) => this.isAppAllowed(n.appName));
 
     if (unread.length === 0) {
       let emptyReply = 'You have no new unread notifications.';
@@ -122,20 +123,23 @@ class NotificationReaderManager {
 
     let fullSpokenText = `You have ${unread.length} new ${unread.length === 1 ? 'notification' : 'notifications'}: `;
     if (language === 'ta') {
-      fullSpokenText = `உங்களுக்கு ${unread.length} புதிய அறிவிப்புகள் உள்ளன: `;
+      fullSpokenText = `உங்களுக்கு ${unread.length} புதிய அறிவிப்புகள் வந்துள்ளன: `;
     } else if (language === 'tanglish') {
       fullSpokenText = `Ungalukku ${unread.length} pudhu notifications vandhirukku bro: `;
     }
 
     unread.forEach((n, idx) => {
+      const app = n.appName || 'Message';
+      const sender = n.sender || 'Someone';
+      const message = n.text || '';
+
       if (language === 'ta') {
-        fullSpokenText += `${idx + 1}. ${n.appName} செயலியில் ${n.sender} அனுப்பிய செய்தி: "${n.text}". `;
+        fullSpokenText += `${idx + 1}. ${app} செயலியில் ${sender} அனுப்பிய செய்தி: "${message}". `;
       } else if (language === 'tanglish') {
-        fullSpokenText += `${idx + 1}. ${n.appName} la ${n.sender} anuppirukaanga: "${n.text}". `;
+        fullSpokenText += `${idx + 1}. ${app} la ${sender} anuppirukaanga: "${message}". `;
       } else {
-        fullSpokenText += `${idx + 1}. From ${n.appName}, ${n.sender} says: "${n.text}". `;
+        fullSpokenText += `${idx + 1}. From ${app}, ${sender} says: "${message}". `;
       }
-      n.read = true; // Mark as read
     });
 
     await SpeechService.speak(fullSpokenText, { preferredLang: language });
@@ -149,7 +153,7 @@ class NotificationReaderManager {
     };
   }
 
-  // Add an incoming notification
+  // Push local notification
   pushNotification(notif) {
     this.queuedNotifications.unshift({
       id: Date.now().toString(),

@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Switch } from 'react-native';
-import { Settings, X, Volume2, Globe, Bell, Battery, Shield, Calendar } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Switch, TextInput } from 'react-native';
+import { Settings, X, Volume2, Globe, Bell, Battery, Shield, Calendar, Sparkles } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 import { SpeechService } from '../services/speechService';
 import { NotificationReaderService } from '../services/notificationService';
+import { AIService } from '../services/aiService';
 
 export function QuickSettingsModal({
   visible,
@@ -12,8 +13,13 @@ export function QuickSettingsModal({
   onUpdatePreferences,
   onOpenReminders,
 }) {
-  const currentLang = preferences.language || 'auto';
-  const currentRate = preferences.speechRate || 1.0;
+  const [apiKeyInput, setApiKeyInput] = useState(preferences.geminiApiKey || '');
+
+  const handleSaveApiKey = () => {
+    AIService.setApiKey(apiKeyInput);
+    onUpdatePreferences({ geminiApiKey: apiKeyInput });
+    SpeechService.speak('Gemini model settings updated.');
+  };
 
   const handleTestSpeech = async () => {
     let testMsg = "Hello! My Bro voice assistant is working properly.";
@@ -189,7 +195,37 @@ export function QuickSettingsModal({
               </TouchableOpacity>
             </View>
 
-            {/* 5. Reminders Manager */}
+            {/* 5. AI Brain & Models */}
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Sparkles size={20} color={COLORS.brandRed} />
+                <Text style={styles.sectionTitle}>GEMINI AI MODEL / API</Text>
+              </View>
+              <Text style={styles.sectionDescription}>
+                Optionally connect your Google Gemini API key for ultra-humanized intelligence, deep understanding, and witty conversation.
+              </Text>
+              <TextInput
+                value={apiKeyInput}
+                onChangeText={setApiKeyInput}
+                placeholder="Paste Gemini API Key (AIzaSy...)"
+                placeholderTextColor="#666670"
+                style={styles.keyInput}
+                secureTextEntry
+                accessible={true}
+                accessibilityLabel="Gemini API Key input"
+              />
+              <TouchableOpacity
+                onPress={handleSaveApiKey}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Save Gemini API Key"
+                style={styles.saveKeyButton}
+              >
+                <Text style={styles.saveKeyButtonText}>SAVE AI MODEL KEY</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 6. Reminders Manager */}
             {onOpenReminders ? (
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
@@ -351,6 +387,30 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.brandRed,
     backgroundColor: COLORS.brandRedDark,
+  },
+  keyInput: {
+    backgroundColor: '#0F0F12',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.surfaceBorder,
+    color: COLORS.textPrimary,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+    marginBottom: 10,
+  },
+  saveKeyButton: {
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: COLORS.brandRed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveKeyButtonText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
   permButtonText: {
     fontSize: 13,
