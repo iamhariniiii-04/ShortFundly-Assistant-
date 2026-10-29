@@ -1,11 +1,9 @@
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, DEFAULT_PREFERENCES } from '../config/constants';
 import { SpeechService } from './speechService';
 import { HapticService } from './hapticService';
-
-const { BroBridge } = NativeModules;
 
 class NotificationReaderManager {
   constructor() {
@@ -87,22 +85,8 @@ class NotificationReaderManager {
 
     let allNotifs = [];
 
-    // 1. Fetch real captured notifications from Native Android NotificationListener
-    if (BroBridge && typeof BroBridge.getCapturedNotifications === 'function') {
-      try {
-        const nativeList = await BroBridge.getCapturedNotifications();
-        if (Array.isArray(nativeList) && nativeList.length > 0) {
-          allNotifs = nativeList;
-          // Clear after reading so they aren't repeated
-          await BroBridge.clearCapturedNotifications();
-        }
-      } catch (e) {
-        console.warn('Native notification fetch error:', e);
-      }
-    }
-
-    // 2. Fallback to queued local notifications
-    if (allNotifs.length === 0 && this.queuedNotifications.length > 0) {
+    // 1. Queued notifications
+    if (this.queuedNotifications.length > 0) {
       allNotifs = this.queuedNotifications.filter((n) => !n.read);
       this.queuedNotifications.forEach((n) => (n.read = true));
     }

@@ -1,9 +1,7 @@
-import { NativeModules } from 'react-native';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HapticService } from './hapticService';
 
-const { BroBridge } = NativeModules;
 const CONTACTS_STORAGE_KEY = '@hey_bro_voice_contacts';
 
 export const CallMessageService = {
@@ -50,13 +48,7 @@ export const CallMessageService = {
   async getSavedContacts() {
     try {
       const raw = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {
-        mommy: '',
-        mummy: '',
-        mom: '',
-        dad: '',
-        daddy: '',
-      };
+      return raw ? JSON.parse(raw) : {};
     } catch (e) {
       return {};
     }
@@ -177,7 +169,7 @@ export const CallMessageService = {
       phoneNumber = payloadOrTarget.replace(/[^\d+]/g, '');
     }
 
-    // If still no digits, try contact lookup once more
+    // If still no digits, try contact lookup
     if (!phoneNumber) {
       const c = await this.lookupContact(targetName);
       if (c && c.phoneNumber) {
@@ -186,12 +178,10 @@ export const CallMessageService = {
     }
 
     if (!phoneNumber) {
-      // If no number known, open dialer directly
-      if (BroBridge && typeof BroBridge.directCall === 'function') {
-        await BroBridge.directCall('');
-      } else {
+      // If no number known, open dialer
+      try {
         await Linking.openURL('tel:');
-      }
+      } catch (e) {}
       return {
         success: true,
         reply: `Opening dialer for ${targetName}.`,
@@ -199,17 +189,6 @@ export const CallMessageService = {
     }
 
     try {
-      // 1. Try Native Android Bridge for direct call
-      if (BroBridge && typeof BroBridge.directCall === 'function') {
-        await BroBridge.directCall(phoneNumber);
-        HapticService.onSuccess();
-        return {
-          success: true,
-          reply: `Calling ${targetName} now.`,
-        };
-      }
-
-      // 2. Linking fallback
       const url = `tel:${phoneNumber}`;
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
@@ -254,7 +233,6 @@ export const CallMessageService = {
   async executeMessage(recipient, content, platform = 'sms') {
     HapticService.onProcessing();
 
-    // Check if recipient is a name in contacts
     const contact = await this.lookupContact(recipient);
     const cleanNumber = contact ? contact.phoneNumber : recipient.replace(/[^\d+]/g, '');
 

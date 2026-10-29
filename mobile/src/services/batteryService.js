@@ -1,9 +1,6 @@
-import { NativeModules, Platform } from 'react-native';
 import * as Battery from 'expo-battery';
 import { HapticService } from './hapticService';
 import { SpeechService } from './speechService';
-
-const { BroBridge } = NativeModules;
 
 class BatteryManager {
   constructor() {
@@ -14,34 +11,20 @@ class BatteryManager {
 
   // Get current battery info
   async getStatus() {
-    // 1. Try Native Android Bridge (directly reads hardware battery capacity)
-    if (BroBridge && typeof BroBridge.getBatteryLevel === 'function') {
-      try {
-        const res = await BroBridge.getBatteryLevel();
-        if (res && res.percentage >= 0) {
-          this.lastKnownLevel = res.percentage;
-          this.isCharging = res.isCharging || false;
-          return {
-            success: true,
-            percentage: res.percentage,
-            stateText: this.isCharging ? 'charging' : 'discharging',
-            isLow: res.percentage <= 20,
-            isCritical: res.percentage <= 10,
-          };
-        }
-      } catch (e) {
-        console.log('[Battery] Native bridge error:', e.message);
-      }
-    }
-
-    // 2. Fallback to expo-battery
     try {
       const level = await Battery.getBatteryLevelAsync();
       let stateText = 'on battery';
       try {
         const state = await Battery.getBatteryStateAsync();
-        if (state === Battery.BatteryState.CHARGING) stateText = 'charging';
-        else if (state === Battery.BatteryState.FULL) stateText = 'fully charged';
+        if (state === Battery.BatteryState.CHARGING) {
+          stateText = 'charging';
+          this.isCharging = true;
+        } else if (state === Battery.BatteryState.FULL) {
+          stateText = 'fully charged';
+          this.isCharging = true;
+        } else {
+          this.isCharging = false;
+        }
       } catch (e) {}
 
       if (level !== null && level >= 0) {
@@ -59,7 +42,6 @@ class BatteryManager {
       console.log('[Battery] Expo battery error:', e.message);
     }
 
-    // 3. Fallback to last known level
     return {
       success: true,
       percentage: this.lastKnownLevel,

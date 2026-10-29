@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { AppNavigationService } from './appNavigationService';
 import { CallMessageService } from './callMessageService';
 import { BatteryService } from './batteryService';
@@ -9,8 +9,6 @@ import { InternetSearchService } from './internetSearchService';
 import { AIService } from './aiService';
 import { SpeechService } from './speechService';
 import { HapticService } from './hapticService';
-
-const { BroBridge } = NativeModules;
 
 export const CommandInterpreter = {
   async processCommand(query, context = {}) {
@@ -36,6 +34,20 @@ export const CommandInterpreter = {
 
     // 1. Check for Pending Confirmation (Yes / No for Calls & SMS)
     if (context.pendingAction) {
+      if (context.pendingAction.type === 'PROVIDE_PHONE_NUMBER') {
+        const digits = clean.replace(/[^\d+]/g, '');
+        if (digits.length >= 6) {
+          const target = context.pendingAction.payload.target;
+          await CallMessageService.saveContact(target, digits);
+          const saveReply = language === 'ta'
+            ? `${target} எண் சேமிக்கப்பட்டது. இப்போது அழைக்கிறேன்.`
+            : `Saved ${target}'s number. Calling ${target} now.`;
+          await SpeechService.speak(saveReply, { preferredLang: language });
+          await CallMessageService.executeCall({ target, phoneNumber: digits });
+          return { success: true, intent: 'SAVED_AND_CALLED', reply: saveReply, clearPending: true };
+        }
+      }
+
       const isAffirmative = /^(yes|yeah|yep|sure|ok|okay|aama|aamam|sari|kandippa|ஆம்|சரி|call|yes call|call now|go ahead|do it|please call)/i.test(clean);
       const isNegative = /^(no|nope|cancel|stop|don't|dont|illa|vendam|vendaam|இல்லை|வேண்டாம்|don't call|dont call)/i.test(clean);
 
@@ -66,10 +78,12 @@ export const CommandInterpreter = {
       clean.includes('திரையை பூட்டு') ||
       clean.includes('phone ah lock pannu')
     ) {
-      if (BroBridge && typeof BroBridge.lockPhone === 'function') {
-        await BroBridge.lockPhone();
-      }
-      const reply = language === 'ta' ? 'ஃபோன் பூட்டப்பட்டது.' : 'Locking your phone.';
+      try {
+        await IntentLauncher.startActivityAsync('android.intent.action.MAIN', {
+          category: 'android.intent.category.HOME',
+        });
+      } catch (e) {}
+      const reply = language === 'ta' ? 'திரை பூட்டப்பட்டது.' : 'Locking your phone.';
       await SpeechService.speak(reply, { preferredLang: language });
       return { success: true, intent: 'LOCK_PHONE', reply };
     }
@@ -103,14 +117,12 @@ export const CommandInterpreter = {
     }
 
     // 5. Reminders Intent
-    // 5a. List reminders
     if (
       /(?:what are my reminders|list reminders|show reminders|any reminders|நினைவூட்டல்கள்)/i.test(clean)
     ) {
       const res = await ReminderService.announceAll(language);
       return { success: res.success, intent: 'LIST_REMINDERS', reply: res.reply, reminders: res.reminders };
     }
-    // 5b. Create reminder
     if (
       clean.includes('remind me') ||
       clean.includes('reminder') ||
@@ -122,10 +134,28 @@ export const CommandInterpreter = {
     }
 
     // 6. Calls & Messages Intent
-    // 6a. Call intent
     const callIntent = CallMessageService.parseCallIntent(raw);
     if (callIntent) {
       const conf = await CallMessageService.prepareCallConfirmation(callIntent.target, language);
+
+      // If no phone number is known for this contact:
+      if (!conf.payload.phoneNumber) {
+        const askNumber = language === 'ta'
+          ? `${conf.payload.target} எண் எனக்கு தெரியாது ப்ரோ. அவர்களின் போன் நம்பர் சொல்லுங்க.`
+          : `I don't have a phone number for ${conf.payload.target} yet, bro. Please tell me their number.`;
+        await SpeechService.speak(askNumber, { preferredLang: language });
+        return {
+          success: true,
+          intent: 'ASK_PHONE_NUMBER',
+          requiresConfirmation: true,
+          pendingAction: {
+            type: 'PROVIDE_PHONE_NUMBER',
+            payload: { target: conf.payload.target },
+          },
+          reply: askNumber,
+        };
+      }
+
       await SpeechService.speak(conf.prompt, { preferredLang: language });
       return {
         success: true,
