@@ -1,8 +1,14 @@
 import sys
 import io
+from pathlib import Path
 
 # Force UTF-8 on Windows stdout
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+# Ensure project root is in sys.path
+root_dir = str(Path(__file__).resolve().parent.parent)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 import backend.app as b_app
 

@@ -4,10 +4,22 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure root directory is in sys.path
+# Ensure root directory is in sys.path and UTF-8 output on Windows
 root_dir = str(Path(__file__).resolve().parent.parent)
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
+
+if sys.platform.startswith('win'):
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
+    if hasattr(sys.stderr, 'reconfigure'):
+        try:
+            sys.stderr.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
 
 import platform
 from datetime import datetime
