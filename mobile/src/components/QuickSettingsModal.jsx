@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Switch, TextInput } from 'react-native';
-import { Settings, X, Volume2, Globe, Bell, Battery, Shield, Calendar, Sparkles, Phone } from 'lucide-react-native';
+import { Settings, X, Volume2, Globe, Bell, Battery, Shield, Calendar, Sparkles } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 import { SpeechService } from '../services/speechService';
 import { NotificationReaderService } from '../services/notificationService';
 import { AIService } from '../services/aiService';
-import { CallMessageService } from '../services/callMessageService';
 
 export function QuickSettingsModal({
   visible,
@@ -15,28 +14,6 @@ export function QuickSettingsModal({
   onOpenReminders,
 }) {
   const [apiKeyInput, setApiKeyInput] = useState(preferences.geminiApiKey || '');
-  const [mommyNumber, setMommyNumber] = useState('');
-  const [dadNumber, setDadNumber] = useState('');
-
-  useEffect(() => {
-    CallMessageService.getSavedContacts().then((contacts) => {
-      if (contacts.mommy || contacts.mummy) setMommyNumber(contacts.mommy || contacts.mummy);
-      if (contacts.dad || contacts.daddy) setDadNumber(contacts.dad || contacts.daddy);
-    });
-  }, [visible]);
-
-  const handleSaveContacts = async () => {
-    if (mommyNumber) {
-      await CallMessageService.saveContact('mommy', mommyNumber);
-      await CallMessageService.saveContact('mummy', mommyNumber);
-      await CallMessageService.saveContact('mom', mommyNumber);
-    }
-    if (dadNumber) {
-      await CallMessageService.saveContact('dad', dadNumber);
-      await CallMessageService.saveContact('daddy', dadNumber);
-    }
-    SpeechService.speak('Voice speed dial contacts updated.');
-  };
 
   const handleSaveApiKey = () => {
     AIService.setApiKey(apiKeyInput);
@@ -248,43 +225,7 @@ export function QuickSettingsModal({
               </TouchableOpacity>
             </View>
 
-            {/* 6. Speed Dial Contacts */}
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Phone size={20} color={COLORS.brandRed} />
-                <Text style={styles.sectionTitle}>SPEED DIAL CONTACTS</Text>
-              </View>
-              <Text style={styles.sectionDescription}>
-                Save numbers for instant hands-free calling without triggering Play Protect blocks.
-              </Text>
-              <TextInput
-                value={mommyNumber}
-                onChangeText={setMommyNumber}
-                placeholder="Mommy / Mummy Number (e.g. 9876543210)"
-                placeholderTextColor="#666670"
-                keyboardType="phone-pad"
-                style={styles.keyInput}
-              />
-              <TextInput
-                value={dadNumber}
-                onChangeText={setDadNumber}
-                placeholder="Dad / Daddy Number (e.g. 9876543210)"
-                placeholderTextColor="#666670"
-                keyboardType="phone-pad"
-                style={styles.keyInput}
-              />
-              <TouchableOpacity
-                onPress={handleSaveContacts}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Save Speed Dial Contacts"
-                style={styles.saveKeyButton}
-              >
-                <Text style={styles.saveKeyButtonText}>SAVE CONTACT NUMBERS</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 7. Reminders Manager */}
+            {/* 6. Reminders Manager */}
             {onOpenReminders ? (
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>

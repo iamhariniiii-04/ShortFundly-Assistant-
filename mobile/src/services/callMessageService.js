@@ -4,7 +4,39 @@ import { HapticService } from './hapticService';
 
 const CONTACTS_STORAGE_KEY = '@hey_bro_voice_contacts';
 
+export function parseSpokenPhoneNumber(input) {
+  if (!input) return '';
+  const wordMap = {
+    zero: '0', oh: '0', o: '0', null: '0',
+    one: '1', won: '1',
+    two: '2', to: '2', too: '2',
+    three: '3', tree: '3',
+    four: '4', for: '4', fore: '4',
+    five: '5',
+    six: '6',
+    seven: '7',
+    eight: '8', ate: '8',
+    nine: '9',
+    plus: '+',
+  };
+
+  const tokens = input.toLowerCase().replace(/[^a-z0-9+]/g, ' ').split(/\s+/).filter(Boolean);
+  let result = '';
+  for (const token of tokens) {
+    if (wordMap[token] !== undefined) {
+      result += wordMap[token];
+    } else if (/^\d+$/.test(token)) {
+      result += token;
+    } else if (token === '+') {
+      result += '+';
+    }
+  }
+  return result;
+}
+
 export const CallMessageService = {
+  parseSpokenPhoneNumber,
+
   // Parse call intent
   parseCallIntent(query) {
     const q = query.toLowerCase().trim();
@@ -38,6 +70,26 @@ export const CallMessageService = {
       const cleanName = name.toLowerCase().trim();
       const cleanNumber = number.replace(/[^\d+]/g, '');
       existing[cleanName] = cleanNumber;
+
+      // Auto-populate familial & spoken aliases
+      if (cleanName.includes('mom') || cleanName.includes('mumm') || cleanName.includes('amma')) {
+        ['mom', 'mummy', 'mommy', 'mother', 'amma', 'maa'].forEach((a) => {
+          existing[a] = cleanNumber;
+        });
+      } else if (cleanName.includes('dad') || cleanName.includes('father') || cleanName.includes('appa')) {
+        ['dad', 'daddy', 'father', 'appa', 'paa'].forEach((a) => {
+          existing[a] = cleanNumber;
+        });
+      } else if (cleanName.includes('bro') || cleanName.includes('brother') || cleanName.includes('anna')) {
+        ['bro', 'brother', 'anna', 'thambi'].forEach((a) => {
+          existing[a] = cleanNumber;
+        });
+      } else if (cleanName.includes('sis') || cleanName.includes('sister') || cleanName.includes('akka')) {
+        ['sis', 'sister', 'akka', 'thangachi'].forEach((a) => {
+          existing[a] = cleanNumber;
+        });
+      }
+
       await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(existing));
       return true;
     } catch (e) {

@@ -32,19 +32,31 @@ export const CommandInterpreter = {
       return { success: true, intent: 'STOP' };
     }
 
-    // 1. Check for Pending Confirmation (Yes / No for Calls & SMS)
+    // 1. Check for Pending Confirmation (Yes / No for Calls & SMS, or Spoken Phone Number)
     if (context.pendingAction) {
       if (context.pendingAction.type === 'PROVIDE_PHONE_NUMBER') {
-        const digits = clean.replace(/[^\d+]/g, '');
-        if (digits.length >= 6) {
-          const target = context.pendingAction.payload.target;
+        const target = context.pendingAction.payload.target;
+        const digits = CallMessageService.parseSpokenPhoneNumber(raw);
+        if (digits && digits.length >= 6) {
           await CallMessageService.saveContact(target, digits);
           const saveReply = language === 'ta'
             ? `${target} எண் சேமிக்கப்பட்டது. இப்போது அழைக்கிறேன்.`
-            : `Saved ${target}'s number. Calling ${target} now.`;
+            : `Saved ${target}'s number. Calling ${target} now, bro!`;
           await SpeechService.speak(saveReply, { preferredLang: language });
           await CallMessageService.executeCall({ target, phoneNumber: digits });
           return { success: true, intent: 'SAVED_AND_CALLED', reply: saveReply, clearPending: true };
+        } else {
+          const retryReply = language === 'ta'
+            ? `எண் சரியாக புரியவில்லை ப்ரோ. மீண்டும் சொல்லுங்க.`
+            : `I didn't catch the digits clearly, bro. What is ${target}'s phone number?`;
+          await SpeechService.speak(retryReply, { preferredLang: language });
+          return {
+            success: false,
+            intent: 'ASK_PHONE_NUMBER_RETRY',
+            requiresConfirmation: true,
+            pendingAction: context.pendingAction,
+            reply: retryReply,
+          };
         }
       }
 
@@ -133,40 +145,66 @@ export const CommandInterpreter = {
       return { success: res.success, intent: 'CREATE_REMINDER', reply: res.reply };
     }
 
-    // 6. Calls & Messages Intent
+    // 6. Calls & Direct Voice Dialing
     const callIntent = CallMessageService.parseCallIntent(raw);
     if (callIntent) {
-      const conf = await CallMessageService.prepareCallConfirmation(callIntent.target, language);
+      const target = callIntent.target;
 
-      // If no phone number is known for this contact:
-      if (!conf.payload.phoneNumber) {
-        const askNumber = language === 'ta'
-          ? `${conf.payload.target} எண் எனக்கு தெரியாது ப்ரோ. அவர்களின் போன் நம்பர் சொல்லுங்க.`
-          : `I don't have a phone number for ${conf.payload.target} yet, bro. Please tell me their number.`;
-        await SpeechService.speak(askNumber, { preferredLang: language });
-        return {
-          success: true,
-          intent: 'ASK_PHONE_NUMBER',
-          requiresConfirmation: true,
-          pendingAction: {
-            type: 'PROVIDE_PHONE_NUMBER',
-            payload: { target: conf.payload.target },
-          },
-          reply: askNumber,
-        };
+      // 6a. Direct phone number (e.g. "Call 9876543210")
+      if (callIntent.isPhoneNumber) {
+        const cleanNum = target.replace(/[^\d+]/g, '');
+        const reply = language === 'ta'
+          ? `${cleanNum} என்ற எண்ணை அழைக்கிறேன்.`
+          : `Calling ${cleanNum} now, bro.`;
+        await SpeechService.speak(reply, { preferredLang: language });
+        await CallMessageService.executeCall(cleanNum);
+        return { success: true, intent: 'CALL_EXECUTED', reply, clearPending: true };
       }
 
-      await SpeechService.speak(conf.prompt, { preferredLang: language });
+      // 6b. Named contact (e.g. "Call Mommy", "Call Dad", "Call John")
+      const contact = await CallMessageService.lookupContact(target);
+      if (contact && contact.phoneNumber) {
+        // Seamless! Number is already known -> Place call immediately without blocking modals
+        const reply = language === 'ta'
+          ? `${target} என்பவரை அழைக்கிறேன்.`
+          : `Calling ${target} now, bro.`;
+        await SpeechService.speak(reply, { preferredLang: language });
+        await CallMessageService.executeCall({ target, phoneNumber: contact.phoneNumber });
+        return { success: true, intent: 'CALL_EXECUTED', reply, clearPending: true };
+      }
+
+      // 6c. Unknown Contact -> Prompt verbally for number, then seamlessly dial
+      const askNumber = language === 'ta'
+        ? `${target} எண் எனக்கு தெரியாது ப்ரோ. அவர்களின் போன் நம்பர் சொல்லுங்க.`
+        : `I don't have a phone number for ${target} yet, bro. What is their number?`;
+      await SpeechService.speak(askNumber, { preferredLang: language });
       return {
         success: true,
-        intent: 'CONFIRM_CALL',
+        intent: 'ASK_PHONE_NUMBER',
         requiresConfirmation: true,
         pendingAction: {
-          type: 'CALL',
-          payload: conf.payload,
+          type: 'PROVIDE_PHONE_NUMBER',
+          payload: { target },
         },
-        reply: conf.prompt,
+        reply: askNumber,
       };
+    }
+
+    // 6b. Voice Contact Saving ("save mommy number 9876543210", "dad number is 9876543210")
+    const saveContactMatch = raw.match(/(?:save|set|store|keep)\s+([a-zA-Z\s]+?)(?:'s)?\s+(?:phone\s+)?number(?:\s+as|\s+is)?\s+(.+)/i) ||
+                             raw.match(/([a-zA-Z\s]+?)(?:'s)?\s+(?:phone\s+)?number(?:\s+is|\s+as)\s+(.+)/i);
+    if (saveContactMatch) {
+      const contactName = saveContactMatch[1].trim();
+      const rawNumber = saveContactMatch[2].trim();
+      const digits = CallMessageService.parseSpokenPhoneNumber(rawNumber);
+      if (digits.length >= 6) {
+        await CallMessageService.saveContact(contactName, digits);
+        const reply = language === 'ta'
+          ? `${contactName} போன் எண் சேமிக்கப்பட்டது.`
+          : `Saved ${contactName}'s number as ${digits}, bro.`;
+        await SpeechService.speak(reply, { preferredLang: language });
+        return { success: true, intent: 'SAVE_CONTACT', reply };
+      }
     }
 
     // 6b. Message / SMS / WhatsApp intent
