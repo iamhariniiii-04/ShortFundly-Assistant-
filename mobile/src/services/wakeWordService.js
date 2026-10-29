@@ -2,18 +2,26 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { WAKE_WORDS } from '../config/constants';
 import { HapticService } from './hapticService';
 import { SpeechService } from './speechService';
+import { SpeechRecognitionService } from './speechRecognitionService';
 
 class WakeWordManager {
   constructor() {
     this.isActive = false;
     this.isListening = false;
     this.onWakeWordDetectedCallback = null;
-    this.intervalId = null;
+    this.onCommandDetectedCallback = null;
+    this.unsubscribeSpeechRecognition = null;
+    this.currentLanguage = 'en';
   }
 
   // Set the callback invoked when "Hey Bro" is triggered
   setCallback(callback) {
     this.onWakeWordDetectedCallback = callback;
+  }
+
+  // Set callback when user speaks a command along with Hey Bro
+  setCommandCallback(callback) {
+    this.onCommandDetectedCallback = callback;
   }
 
   // Check if a phrase matches any wake word variation
@@ -37,14 +45,46 @@ class WakeWordManager {
   }
 
   // Start continuous wake word service
-  async startService() {
+  async startService(language = 'en') {
     if (this.isActive) return;
     this.isActive = true;
+    this.currentLanguage = language;
 
     try {
       // Keep app awake during foreground listening
       await activateKeepAwakeAsync('HeyBroWakeService');
     } catch (e) {}
+
+    // Hook speech recognition listener for "Hey Bro"
+    if (SpeechRecognitionService.isAvailable()) {
+      const langCode = language === 'ta' ? 'ta-IN' : 'en-US';
+      this.unsubscribeSpeechRecognition = SpeechRecognitionService.addResultListener(
+        async ({ transcript, isFinal }) => {
+          if (!this.isActive || !transcript) return;
+
+          const clean = transcript.toLowerCase().trim();
+
+          // If wake word is spoken
+          if (this.isWakeWord(clean)) {
+            const remainder = this.stripWakeWord(clean);
+            await this.triggerWakeWord(this.currentLanguage);
+
+            if (remainder && remainder.length > 2) {
+              if (this.onCommandDetectedCallback) {
+                this.onCommandDetectedCallback(remainder);
+              }
+            }
+          }
+        }
+      );
+
+      // Start continuous listening for wake word
+      await SpeechRecognitionService.start({
+        lang: langCode,
+        continuous: true,
+        autoRestart: true,
+      });
+    }
 
     console.log('[WakeWordService] Wake word listener started. Listening for "Hey Bro"...');
   }
@@ -53,11 +93,11 @@ class WakeWordManager {
   async triggerWakeWord(language = 'en') {
     await HapticService.onWakeWord();
 
-    let wakeGreeting = "Yes Bro, I'm listening.";
+    let wakeGreeting = "yes bro, I'm listening";
     if (language === 'ta') {
       wakeGreeting = 'சொல்லுங்க ப்ரோ, கேட்கிறேன்.';
     } else if (language === 'tanglish') {
-      wakeGreeting = 'Sollunga bro, kekkuren.';
+      wakeGreeting = 'yes bro, I am listening.';
     }
 
     await SpeechService.speak(wakeGreeting, { preferredLang: language });
@@ -73,10 +113,13 @@ class WakeWordManager {
     try {
       deactivateKeepAwake('HeyBroWakeService');
     } catch (e) {}
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+
+    if (this.unsubscribeSpeechRecognition) {
+      this.unsubscribeSpeechRecognition();
+      this.unsubscribeSpeechRecognition = null;
     }
+
+    await SpeechRecognitionService.stop();
     console.log('[WakeWordService] Wake word listener stopped.');
   }
 }

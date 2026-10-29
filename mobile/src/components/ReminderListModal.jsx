@@ -62,7 +62,7 @@ export function ReminderListModal({ visible, onClose, onAddVoiceReminder }) {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Calendar size={28} color={COLORS.accentAmber} />
+              <Calendar size={28} color={COLORS.brandRed} />
               <Text style={styles.title}>REMINDERS</Text>
             </View>
             <TouchableOpacity
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     letterSpacing: 1.5,
   },
   closeButton: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   itemTime: {
     fontSize: 14,
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     fontWeight: '600',
   },
   deleteButton: {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   addButton: {
-    backgroundColor: COLORS.accentAmber,
+    backgroundColor: COLORS.brandRed,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#000000',
+    color: '#FFFFFF',
     letterSpacing: 1,
   },
 });

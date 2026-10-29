@@ -5,6 +5,7 @@ import { SpeechService } from '../services/speechService';
 import { HapticService } from '../services/hapticService';
 import { BatteryService } from '../services/batteryService';
 import { WakeWordService } from '../services/wakeWordService';
+import { SpeechRecognitionService } from '../services/speechRecognitionService';
 import { CommandInterpreter } from '../services/commandInterpreter';
 
 export const ASSISTANT_STATE = {
@@ -44,55 +45,9 @@ export function useVoiceAssistant() {
     })();
   }, []);
 
-  // Initialize Speech listener, Battery monitor, and Wake word
-  useEffect(() => {
-    // 1. Speech listener to sync assistant speaking state
-    const unsubscribeSpeech = SpeechService.addListener(({ isSpeaking, status, text }) => {
-      if (isSpeaking) {
-        setState(ASSISTANT_STATE.SPEAKING);
-      } else if (stateRef.current === ASSISTANT_STATE.SPEAKING) {
-        if (pendingActionRef.current) {
-          setState(ASSISTANT_STATE.AWAITING_CONFIRMATION);
-        } else {
-          setState(ASSISTANT_STATE.IDLE);
-        }
-      }
-    });
-
-    // 2. Battery monitoring
-    BatteryService.getStatus().then((b) => {
-      if (b.success) setBatteryLevel(b.percentage);
-    });
-    BatteryService.startMonitor(({ percentage }) => {
-      setBatteryLevel(percentage);
-    });
-
-    // 3. Wake Word Service callback
-    WakeWordService.setCallback(() => {
-      startListening();
-    });
-    WakeWordService.startService();
-
-    return () => {
-      unsubscribeSpeech();
-      BatteryService.stopMonitor();
-      WakeWordService.stopService();
-    };
-  }, []);
-
-  // Start Voice Listening
-  const startListening = useCallback(async () => {
-    // If speaking, interrupt speech first
-    if (stateRef.current === ASSISTANT_STATE.SPEAKING) {
-      await SpeechService.stop();
-    }
-
-    HapticService.onMicOpen();
-    setState(ASSISTANT_STATE.LISTENING);
-  }, []);
-
   // Stop Listening / Cancel
   const stopListening = useCallback(async () => {
+    await SpeechRecognitionService.stop();
     HapticService.onMicClose();
     setState(ASSISTANT_STATE.IDLE);
   }, []);
@@ -143,6 +98,84 @@ export function useVoiceAssistant() {
       setState(ASSISTANT_STATE.IDLE);
     }
   }, []);
+
+  // Start Voice Listening (for direct commands)
+  const startListening = useCallback(async () => {
+    // If speaking, interrupt speech first
+    if (stateRef.current === ASSISTANT_STATE.SPEAKING) {
+      await SpeechService.stop();
+    }
+
+    HapticService.onMicOpen();
+    setState(ASSISTANT_STATE.LISTENING);
+
+    if (SpeechRecognitionService.isAvailable()) {
+      const langCode = preferencesRef.current.language === 'ta' ? 'ta-IN' : 'en-US';
+      await SpeechRecognitionService.start({
+        lang: langCode,
+        continuous: false,
+        autoRestart: false,
+      });
+    }
+  }, []);
+
+  // Initialize Speech listener, Battery monitor, and Wake word
+  useEffect(() => {
+    // 1. Speech listener to sync assistant speaking state
+    const unsubscribeSpeech = SpeechService.addListener(({ isSpeaking }) => {
+      if (isSpeaking) {
+        setState(ASSISTANT_STATE.SPEAKING);
+      } else if (stateRef.current === ASSISTANT_STATE.SPEAKING) {
+        if (pendingActionRef.current) {
+          setState(ASSISTANT_STATE.AWAITING_CONFIRMATION);
+        } else {
+          setState(ASSISTANT_STATE.IDLE);
+          // Resume wake word listening once speaking completes
+          if (preferencesRef.current.wakeWordEnabled) {
+            WakeWordService.startService(preferencesRef.current.language);
+          }
+        }
+      }
+    });
+
+    // 2. Battery monitoring
+    BatteryService.getStatus().then((b) => {
+      if (b.success) setBatteryLevel(b.percentage);
+    });
+    BatteryService.startMonitor(({ percentage }) => {
+      setBatteryLevel(percentage);
+    });
+
+    // 3. Wake Word Service callbacks
+    WakeWordService.setCallback(() => {
+      // Once wake greeting finishes, open listening for command
+      startListening();
+    });
+    WakeWordService.setCommandCallback((command) => {
+      processUtterance(command);
+    });
+
+    if (preferences.wakeWordEnabled) {
+      WakeWordService.startService(preferences.language);
+    }
+
+    // 4. Speech Recognition result listener
+    const unsubRecognition = SpeechRecognitionService.addResultListener(({ transcript, isFinal }) => {
+      if (stateRef.current === ASSISTANT_STATE.LISTENING && transcript) {
+        setLastQuery(transcript);
+        if (isFinal) {
+          processUtterance(transcript);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeSpeech();
+      unsubRecognition();
+      BatteryService.stopMonitor();
+      WakeWordService.stopService();
+    };
+  }, [preferences.wakeWordEnabled, preferences.language, startListening, processUtterance]);
 
   // Tap-to-Talk / Orb toggle
   const toggleListening = useCallback(async () => {

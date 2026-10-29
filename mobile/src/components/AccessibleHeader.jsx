@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { BatteryCharging, Battery, Settings, HelpCircle, Radio } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, StatusBar } from 'react-native';
+import { BatteryCharging, Battery, Settings, Radio } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 
 export function AccessibleHeader({
@@ -8,86 +8,83 @@ export function AccessibleHeader({
   isCharging,
   onBatteryPress,
   onSettingsPress,
-  onHelpPress,
   wakeWordEnabled = true,
 }) {
   const isBatteryLow = batteryLevel <= 20;
 
   return (
     <View style={styles.header}>
-      {/* App Branding */}
+      {/* ShortFundly Logo + "MY BRO" Branding */}
       <View style={styles.brandRow}>
-        <Text
-          style={styles.appName}
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
           accessible={true}
-          accessibilityRole="header"
-          accessibilityLabel="Hey Bro Voice Assistant"
-        >
-          HEY BRO
-        </Text>
-        {wakeWordEnabled && (
-          <View
-            style={styles.wakeBadge}
+          accessibilityLabel="ShortFundly logo"
+        />
+        <View style={styles.titleColumn}>
+          <Text
+            style={styles.appName}
             accessible={true}
-            accessibilityLabel="Wake word Hey Bro is active"
+            accessibilityRole="header"
+            accessibilityLabel="My Bro Voice Assistant"
           >
-            <Radio size={14} color={COLORS.accentAmber} />
-            <Text style={styles.wakeBadgeText}>WAKE ACTIVE</Text>
-          </View>
-        )}
+            MY BRO
+          </Text>
+          {wakeWordEnabled && (
+            <View
+              style={styles.wakeBadge}
+              accessible={true}
+              accessibilityLabel="Wake word Hey Bro is active"
+            >
+              <Radio size={12} color={COLORS.brandRed} />
+              <Text style={styles.wakeBadgeText}>WAKE ACTIVE</Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* Action Controls */}
+      {/* Header Controls: Battery & Settings */}
       <View style={styles.controlsRow}>
-        {/* Battery Indicator (Tap to announce) */}
+        {/* Battery Indicator (Tap to announce aloud) */}
         <TouchableOpacity
           onPress={onBatteryPress}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel={`Battery ${batteryLevel} percent. Tap to hear status aloud.`}
+          accessibilityLabel={`Battery is at ${batteryLevel} percent. Tap to hear full battery report.`}
           style={[
-            styles.headerButton,
-            isBatteryLow && { borderColor: COLORS.warning, backgroundColor: '#2B1700' },
+            styles.batteryButton,
+            isBatteryLow && { borderColor: COLORS.brandRed, backgroundColor: COLORS.brandRedDark },
           ]}
         >
           {isCharging ? (
-            <BatteryCharging size={22} color={COLORS.success} />
+            <BatteryCharging size={20} color={COLORS.success} />
           ) : (
             <Battery
-              size={22}
-              color={isBatteryLow ? COLORS.warning : COLORS.textPrimary}
+              size={20}
+              color={isBatteryLow ? COLORS.brandRed : COLORS.textPrimary}
             />
           )}
           <Text
             style={[
-              styles.buttonText,
-              isBatteryLow && { color: COLORS.warning, fontWeight: '800' },
+              styles.batteryText,
+              isBatteryLow && { color: COLORS.brandRed, fontWeight: '800' },
             ]}
           >
             {batteryLevel}%
           </Text>
         </TouchableOpacity>
 
-        {/* Help & Commands Guide */}
-        <TouchableOpacity
-          onPress={onHelpPress}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Help and voice command guide. Tap to hear commands."
-          style={styles.iconButton}
-        >
-          <HelpCircle size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-
-        {/* Settings */}
+        {/* Accessible Settings */}
         <TouchableOpacity
           onPress={onSettingsPress}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Settings. Tap to open speech, language, and permissions."
-          style={styles.iconButton}
+          accessibilityLabel="Settings. Tap to open speech speed, language, reminders, and notifications."
+          style={styles.settingsButton}
         >
-          <Settings size={24} color={COLORS.textPrimary} />
+          <Settings size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -99,39 +96,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1.5,
     borderBottomColor: COLORS.surfaceBorder,
     backgroundColor: COLORS.canvas,
   },
   brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  titleColumn: {
     flexDirection: 'column',
-    gap: 4,
+    gap: 3,
   },
   appName: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
-    color: COLORS.accentAmber,
+    color: COLORS.textPrimary,
     letterSpacing: 2,
   },
   wakeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#201A00',
-    paddingHorizontal: 6,
+    backgroundColor: '#1C0606',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#4A3B00',
+    borderColor: '#4A0C0C',
     alignSelf: 'flex-start',
   },
   wakeBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     letterSpacing: 1,
   },
   controlsRow: {
@@ -139,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  headerButton: {
+  batteryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -151,12 +158,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surfaceBorder,
     minHeight: 44,
   },
-  buttonText: {
-    fontSize: 16,
+  batteryText: {
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  iconButton: {
+  settingsButton: {
     backgroundColor: COLORS.surface,
     width: 44,
     height: 44,

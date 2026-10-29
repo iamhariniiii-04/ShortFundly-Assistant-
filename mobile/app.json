@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Bro Voice Assistant",
+    "name": "My Bro",
     "slug": "bro-voice-assistant",
     "owner": "subha04s-team",
     "version": "1.0.0",
@@ -10,6 +10,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#000000",
       "resizeMode": "contain"
     },
@@ -17,8 +18,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.shortfundly.voiceassistant",
       "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "Hey Bro uses speech recognition to understand your voice commands.",
-        "NSMicrophoneUsageDescription": "Hey Bro needs microphone access to listen for 'Hey Bro' and process your requests."
+        "NSSpeechRecognitionUsageDescription": "My Bro uses speech recognition to understand your voice commands.",
+        "NSMicrophoneUsageDescription": "My Bro needs microphone access to listen for 'Hey Bro' and process your requests."
       }
     },
     "android": {
@@ -45,8 +46,16 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#FFD600",
+          "color": "#FF2E2E",
           "sounds": []
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow My Bro to use the microphone.",
+          "speechRecognitionPermission": "Allow My Bro to use speech recognition.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ]
     ],

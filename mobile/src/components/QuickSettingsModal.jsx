@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Switch } from 'react-native';
-import { Settings, X, Volume2, Globe, Bell, Battery, Shield } from 'lucide-react-native';
+import { Settings, X, Volume2, Globe, Bell, Battery, Shield, Calendar } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 import { SpeechService } from '../services/speechService';
 import { NotificationReaderService } from '../services/notificationService';
@@ -10,14 +10,15 @@ export function QuickSettingsModal({
   onClose,
   preferences,
   onUpdatePreferences,
+  onOpenReminders,
 }) {
   const currentLang = preferences.language || 'auto';
   const currentRate = preferences.speechRate || 1.0;
 
   const handleTestSpeech = async () => {
-    let testMsg = 'Hello! Hey Bro voice assistant is working properly.';
+    let testMsg = "Hello! My Bro voice assistant is working properly.";
     if (currentLang === 'ta') {
-      testMsg = 'வணக்கம்! ஹே ப்ரோ குரல் உதவியாளர் சிறப்பாக இயங்குகிறது.';
+      testMsg = 'வணக்கம்! மை ப்ரோ குரல் உதவியாளர் சிறப்பாக இயங்குகிறது.';
     } else if (currentLang === 'tanglish') {
       testMsg = 'Vanakkam bro! Voice assistant nalla work aagudhu.';
     }
@@ -38,8 +39,8 @@ export function QuickSettingsModal({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Settings size={28} color={COLORS.accentAmber} />
-              <Text style={styles.title}>ACCESSIBILITY SETTINGS</Text>
+              <Settings size={26} color={COLORS.brandRed} />
+              <Text style={styles.title}>MY BRO SETTINGS</Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
@@ -56,7 +57,7 @@ export function QuickSettingsModal({
             {/* 1. Language Selection */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Globe size={22} color={COLORS.accentAmber} />
+                <Globe size={20} color={COLORS.brandRed} />
                 <Text style={styles.sectionTitle}>PREFERRED LANGUAGE</Text>
               </View>
               <View style={styles.optionRow}>
@@ -94,7 +95,7 @@ export function QuickSettingsModal({
             {/* 2. Speech Rate */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Volume2 size={22} color={COLORS.accentAmber} />
+                <Volume2 size={20} color={COLORS.brandRed} />
                 <Text style={styles.sectionTitle}>SPEECH SPEED (TTS)</Text>
               </View>
               <View style={styles.optionRow}>
@@ -142,7 +143,7 @@ export function QuickSettingsModal({
             {/* 3. Wake Word & Battery Alerts */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Battery size={22} color={COLORS.accentAmber} />
+                <Battery size={20} color={COLORS.brandRed} />
                 <Text style={styles.sectionTitle}>AUTOMATED VOICE ALERTS</Text>
               </View>
 
@@ -151,7 +152,7 @@ export function QuickSettingsModal({
                 <Switch
                   value={preferences.wakeWordEnabled}
                   onValueChange={(val) => onUpdatePreferences({ wakeWordEnabled: val })}
-                  trackColor={{ false: '#333338', true: COLORS.accentAmber }}
+                  trackColor={{ false: '#333338', true: COLORS.brandRed }}
                   thumbColor={COLORS.textPrimary}
                 />
               </View>
@@ -161,7 +162,7 @@ export function QuickSettingsModal({
                 <Switch
                   value={preferences.batteryAlertsEnabled}
                   onValueChange={(val) => onUpdatePreferences({ batteryAlertsEnabled: val })}
-                  trackColor={{ false: '#333338', true: COLORS.accentAmber }}
+                  trackColor={{ false: '#333338', true: COLORS.brandRed }}
                   thumbColor={COLORS.textPrimary}
                 />
               </View>
@@ -170,11 +171,11 @@ export function QuickSettingsModal({
             {/* 4. Notification Listener Permissions */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Bell size={22} color={COLORS.accentAmber} />
+                <Bell size={20} color={COLORS.brandRed} />
                 <Text style={styles.sectionTitle}>NOTIFICATION READER</Text>
               </View>
               <Text style={styles.sectionDescription}>
-                Allow Hey Bro to read important WhatsApp, SMS, and caller alerts.
+                Allow My Bro to read important WhatsApp, SMS, and incoming call alerts aloud.
               </Text>
               <TouchableOpacity
                 onPress={handleOpenNotificationSettings}
@@ -183,10 +184,32 @@ export function QuickSettingsModal({
                 accessibilityLabel="Open Android notification access settings"
                 style={styles.permButton}
               >
-                <Shield size={20} color={COLORS.accentAmber} />
-                <Text style={styles.permButtonText}>ANDROID PERMISSION SETTINGS</Text>
+                <Shield size={18} color={COLORS.textPrimary} />
+                <Text style={styles.permButtonText}>NOTIFICATION PERMISSION</Text>
               </TouchableOpacity>
             </View>
+
+            {/* 5. Reminders Manager */}
+            {onOpenReminders ? (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <Calendar size={20} color={COLORS.brandRed} />
+                  <Text style={styles.sectionTitle}>SAVED REMINDERS</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    onClose();
+                    onOpenReminders();
+                  }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="View and manage saved reminders"
+                  style={styles.permButton}
+                >
+                  <Text style={styles.permButtonText}>VIEW SAVED REMINDERS</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </ScrollView>
         </View>
       </View>
@@ -197,7 +220,7 @@ export function QuickSettingsModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.88)',
     justifyContent: 'flex-end',
   },
   container: {
@@ -223,14 +246,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '900',
-    color: COLORS.accentAmber,
-    letterSpacing: 1.2,
+    color: COLORS.textPrimary,
+    letterSpacing: 1.5,
   },
   closeButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#26262C',
+    backgroundColor: '#202026',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -239,7 +262,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   sectionCard: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#18181C',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1.5,
@@ -252,9 +275,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     letterSpacing: 1.2,
   },
   sectionDescription: {
@@ -271,15 +294,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#141418',
+    backgroundColor: '#121214',
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   choiceButtonActive: {
-    borderColor: COLORS.accentAmber,
-    backgroundColor: '#2D2300',
+    borderColor: COLORS.brandRed,
+    backgroundColor: COLORS.brandRedDark,
   },
   choiceText: {
     fontSize: 13,
@@ -287,21 +310,22 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   choiceTextActive: {
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
   },
   testVoiceButton: {
     marginTop: 12,
     alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.accentAmber,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.brandRed,
+    backgroundColor: COLORS.brandRedDark,
   },
   testVoiceText: {
     fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.accentAmber,
+    fontWeight: '900',
+    color: COLORS.brandRed,
     letterSpacing: 1,
   },
   toggleRow: {
@@ -310,10 +334,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C34',
+    borderBottomColor: '#26262E',
   },
   toggleLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
@@ -322,16 +346,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 48,
+    height: 50,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: COLORS.accentAmber,
-    backgroundColor: '#201B00',
+    borderColor: COLORS.brandRed,
+    backgroundColor: COLORS.brandRedDark,
   },
   permButtonText: {
     fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.accentAmber,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
     letterSpacing: 1,
   },
 });

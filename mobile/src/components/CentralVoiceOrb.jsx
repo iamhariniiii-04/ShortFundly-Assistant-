@@ -7,7 +7,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { Mic, MicOff, Volume2, Loader, AlertTriangle } from 'lucide-react-native';
+import { Mic, Volume2, Loader, AlertTriangle } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 import { ASSISTANT_STATE } from '../hooks/useVoiceAssistant';
 
@@ -23,14 +23,14 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
       animationLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.18,
-            duration: 700,
+            toValue: 1.15,
+            duration: 650,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1.0,
-            duration: 700,
+            duration: 650,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
@@ -41,7 +41,7 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
       animationLoop = Animated.loop(
         Animated.timing(rotateAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 1100,
           easing: Easing.linear,
           useNativeDriver: true,
         })
@@ -61,31 +61,31 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
   const getAccessibilityLabel = () => {
     switch (state) {
       case ASSISTANT_STATE.LISTENING:
-        return 'Microphone active, listening. Tap to cancel.';
+        return 'Listening to your command. Tap to stop.';
       case ASSISTANT_STATE.PROCESSING:
-        return 'Processing your command, please wait.';
+        return 'Thinking, processing your request.';
       case ASSISTANT_STATE.SPEAKING:
-        return 'Speaking response. Tap anywhere to interrupt and stop.';
+        return 'Speaking response. Tap anywhere on screen to interrupt.';
       case ASSISTANT_STATE.AWAITING_CONFIRMATION:
-        return 'Waiting for confirmation. Say yes or no, or tap to answer.';
+        return 'Action confirmation needed. Say yes or no, or tap to answer.';
       default:
-        return 'Hey Bro Voice Assistant button. Tap to talk, or say Hey Bro.';
+        return 'My Bro voice assistant button. Tap or say Hey Bro to speak.';
     }
   };
 
-  // Border & accent color depending on state
+  // Border & accent color (Red, White, Black theme)
   const getOrbColor = () => {
     switch (state) {
       case ASSISTANT_STATE.LISTENING:
-        return COLORS.accentAmber;
+        return COLORS.brandRed;
       case ASSISTANT_STATE.PROCESSING:
         return COLORS.accentCyan;
       case ASSISTANT_STATE.SPEAKING:
-        return COLORS.success;
+        return COLORS.textPrimary;
       case ASSISTANT_STATE.AWAITING_CONFIRMATION:
-        return COLORS.warning;
+        return COLORS.brandRed;
       default:
-        return COLORS.accentAmber;
+        return COLORS.brandRed;
     }
   };
 
@@ -96,19 +96,19 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
 
   return (
     <View style={styles.container}>
-      {/* Outer Pulse Halo */}
+      {/* Outer Pulse Glow Halo */}
       <Animated.View
         style={[
           styles.halo,
           {
             borderColor: getOrbColor(),
             transform: [{ scale: pulseAnim }],
-            opacity: state === ASSISTANT_STATE.LISTENING || state === ASSISTANT_STATE.SPEAKING ? 0.35 : 0.1,
+            opacity: state === ASSISTANT_STATE.LISTENING || state === ASSISTANT_STATE.SPEAKING ? 0.35 : 0.12,
           },
         ]}
       />
 
-      {/* Center Interactive Orb */}
+      {/* Center Tactile Voice Orb */}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
@@ -116,7 +116,7 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
         accessible={true}
         accessibilityRole="button"
         accessibilityLabel={getAccessibilityLabel()}
-        accessibilityHint="Tap to activate voice, double tap screen to repeat, single tap while speaking to interrupt."
+        accessibilityHint="Single tap activates microphone. Double tap anywhere on screen repeats the last reply."
         style={[
           styles.orb,
           {
@@ -132,19 +132,19 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
           ]}
         >
           {state === ASSISTANT_STATE.LISTENING && (
-            <Mic size={64} color={COLORS.accentAmber} strokeWidth={2.5} />
+            <Mic size={68} color={COLORS.brandRed} strokeWidth={2.8} />
           )}
           {state === ASSISTANT_STATE.PROCESSING && (
-            <Loader size={60} color={COLORS.accentCyan} strokeWidth={2.5} />
+            <Loader size={64} color={COLORS.accentCyan} strokeWidth={2.8} />
           )}
           {state === ASSISTANT_STATE.SPEAKING && (
-            <Volume2 size={64} color={COLORS.success} strokeWidth={2.5} />
+            <Volume2 size={68} color={COLORS.textPrimary} strokeWidth={2.8} />
           )}
           {state === ASSISTANT_STATE.AWAITING_CONFIRMATION && (
-            <AlertTriangle size={60} color={COLORS.warning} strokeWidth={2.5} />
+            <AlertTriangle size={64} color={COLORS.brandRed} strokeWidth={2.8} />
           )}
           {state === ASSISTANT_STATE.IDLE && (
-            <Mic size={64} color={COLORS.textPrimary} strokeWidth={2.2} />
+            <Mic size={68} color={COLORS.textPrimary} strokeWidth={2.5} />
           )}
         </Animated.View>
 
@@ -154,7 +154,7 @@ export function CentralVoiceOrb({ state, onPress, onLongPress }) {
           {state === ASSISTANT_STATE.PROCESSING && 'THINKING...'}
           {state === ASSISTANT_STATE.SPEAKING && 'SPEAKING'}
           {state === ASSISTANT_STATE.AWAITING_CONFIRMATION && 'CONFIRM?'}
-          {state === ASSISTANT_STATE.IDLE && 'TAP TO TALK'}
+          {state === ASSISTANT_STATE.IDLE && 'TAP OR SAY "HEY BRO"'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -165,27 +165,27 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   halo: {
     position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
     borderWidth: 4,
   },
   orb: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
     backgroundColor: COLORS.surface,
     borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
+    elevation: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
   },
   innerContent: {
     alignItems: 'center',
@@ -193,8 +193,8 @@ const styles = StyleSheet.create({
   },
   stateText: {
     marginTop: 8,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 1.5,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.2,
   },
 });

@@ -149,6 +149,7 @@ export default function App() {
             onClose={() => setSettingsVisible(false)}
             preferences={preferences}
             onUpdatePreferences={updatePreferences}
+            onOpenReminders={() => setRemindersVisible(true)}
           />
         </View>
       </TouchableWithoutFeedback>

@@ -30,9 +30,9 @@ export function ActionConfirmationModal({
           {/* Header Icon */}
           <View style={styles.iconCircle}>
             {isCall ? (
-              <PhoneCall size={48} color={COLORS.accentAmber} />
+              <PhoneCall size={48} color={COLORS.brandRed} />
             ) : (
-              <MessageSquare size={48} color={COLORS.accentAmber} />
+              <MessageSquare size={48} color={COLORS.brandRed} />
             )}
           </View>
 
@@ -102,24 +102,24 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     borderWidth: 3,
-    borderColor: COLORS.accentAmber,
+    borderColor: COLORS.brandRed,
     alignItems: 'center',
   },
   iconCircle: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#262000',
+    backgroundColor: '#260000',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: COLORS.accentAmber,
+    borderColor: COLORS.brandRed,
   },
   title: {
     fontSize: 20,
     fontWeight: '900',
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     letterSpacing: 1.5,
     marginBottom: 12,
   },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { RotateCcw, Square, Bell, Calendar } from 'lucide-react-native';
+import { RotateCcw, Square } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 
 export function SpokenDisplay({
@@ -8,8 +8,6 @@ export function SpokenDisplay({
   lastResponse,
   onRepeat,
   onStop,
-  onOpenReminders,
-  onOpenNotifications,
   isSpeaking,
 }) {
   return (
@@ -19,7 +17,7 @@ export function SpokenDisplay({
       accessible={true}
       accessibilityLabel="Voice feedback and response display"
     >
-      {/* User Voice Utterance */}
+      {/* What the User Asked */}
       {lastQuery ? (
         <View
           style={styles.queryCard}
@@ -31,34 +29,34 @@ export function SpokenDisplay({
         </View>
       ) : null}
 
-      {/* Assistant Spoken Response */}
+      {/* Assistant Voice Response Card */}
       <View
         style={styles.responseCard}
         accessible={true}
         accessibilityLiveRegion="polite"
-        accessibilityLabel={`Assistant reply: ${lastResponse || 'Say "Hey Bro" or tap the center button to begin.'}`}
+        accessibilityLabel={`My Bro reply: ${lastResponse || 'Say "Hey Bro" or tap the center button to begin.'}`}
       >
-        <Text style={styles.responseLabel}>HEY BRO:</Text>
+        <Text style={styles.responseLabel}>MY BRO:</Text>
         <Text style={styles.responseText}>
           {lastResponse || 'Say "Hey Bro" or tap the center button to give a voice command.'}
         </Text>
       </View>
 
-      {/* Quick Voice Control Actions */}
+      {/* Primary Voice Controls: Repeat & Stop (Large, non-cramped tactile targets) */}
       <View style={styles.actionRow}>
         {/* Repeat Button */}
         <TouchableOpacity
           onPress={onRepeat}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Repeat last response. Double tap anywhere on screen also repeats."
+          accessibilityLabel="Repeat last response. Double-tapping anywhere on screen also repeats."
           style={styles.actionButton}
         >
-          <RotateCcw size={22} color={COLORS.accentAmber} />
+          <RotateCcw size={22} color={COLORS.brandRed} />
           <Text style={styles.actionButtonText}>REPEAT</Text>
         </TouchableOpacity>
 
-        {/* Interrupt / Stop Button */}
+        {/* Stop / Silence Button */}
         <TouchableOpacity
           onPress={onStop}
           accessible={true}
@@ -66,51 +64,31 @@ export function SpokenDisplay({
           accessibilityLabel="Stop speech playback."
           style={[
             styles.actionButton,
-            isSpeaking && { borderColor: COLORS.danger, backgroundColor: '#2E0C0C' },
+            isSpeaking && { borderColor: COLORS.brandRed, backgroundColor: COLORS.brandRedDark },
           ]}
         >
-          <Square size={20} color={isSpeaking ? COLORS.danger : COLORS.textPrimary} />
-          <Text style={[styles.actionButtonText, isSpeaking && { color: COLORS.danger }]}>
-            {isSpeaking ? 'STOP' : 'QUIET'}
+          <Square size={20} color={isSpeaking ? COLORS.brandRed : COLORS.textPrimary} />
+          <Text style={[styles.actionButtonText, isSpeaking && { color: COLORS.brandRed }]}>
+            {isSpeaking ? 'STOP SPEECH' : 'SILENCE'}
           </Text>
-        </TouchableOpacity>
-
-        {/* Reminders Button */}
-        <TouchableOpacity
-          onPress={onOpenReminders}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Reminders. Tap to view your scheduled reminders."
-          style={styles.actionButton}
-        >
-          <Calendar size={22} color={COLORS.textPrimary} />
-          <Text style={styles.actionButtonText}>REMIND</Text>
-        </TouchableOpacity>
-
-        {/* Notifications Button */}
-        <TouchableOpacity
-          onPress={onOpenNotifications}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Notifications. Tap to read unread alerts."
-          style={styles.actionButton}
-        >
-          <Bell size={22} color={COLORS.textPrimary} />
-          <Text style={styles.actionButtonText}>ALERTS</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Non-visual Gesture Guidance Card */}
+      {/* General Voice Info & Accessibility Shortcuts */}
       <View
         style={styles.gestureGuideCard}
         accessible={true}
-        accessibilityLabel="Accessibility Shortcuts: Single tap orb to talk. Tap anywhere to interrupt. Double tap screen to repeat."
+        accessibilityLabel="General Voice Guide: Tap orb or say Hey Bro. Double tap screen to repeat. Tap screen to stop."
       >
-        <Text style={styles.guideTitle}>AUDIO & TACTILE SHORTCUTS</Text>
-        <Text style={styles.guideText}>• Tap Orb / Say "Hey Bro" to talk</Text>
-        <Text style={styles.guideText}>• Double-tap anywhere to repeat last reply</Text>
-        <Text style={styles.guideText}>• Tap screen while speaking to interrupt</Text>
-        <Text style={styles.guideText}>• Supports English, தமிழ், & Tanglish</Text>
+        <Text style={styles.guideTitle}>GENERAL INFO & COMMANDS</Text>
+        <Text style={styles.guideText}>• Say "Hey Bro" or tap the Red Orb to speak</Text>
+        <Text style={styles.guideText}>• "What is my battery?" (Announces battery %)</Text>
+        <Text style={styles.guideText}>• "Open WhatsApp", "Open Camera", "Open Settings"</Text>
+        <Text style={styles.guideText}>• "Read my notifications" (Reads WhatsApp & SMS)</Text>
+        <Text style={styles.guideText}>• "Remind me to take medicine at 8 PM"</Text>
+        <Text style={styles.guideText}>• "What is the time?" / "What is today's date?"</Text>
+        <Text style={styles.guideText}>• Double-tap anywhere on screen to repeat</Text>
+        <Text style={styles.guideText}>• Tap screen while speaking to stop immediately</Text>
       </View>
     </ScrollView>
   );
@@ -122,44 +100,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   contentContainer: {
-    paddingBottom: 24,
+    paddingBottom: 28,
     gap: 16,
   },
   queryCard: {
-    backgroundColor: '#16161A',
+    backgroundColor: '#141418',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
   },
   cardLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: COLORS.textMuted,
     letterSpacing: 1.2,
     marginBottom: 4,
   },
   queryText: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    lineHeight: 28,
+    lineHeight: 26,
   },
   responseCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 18,
     padding: 20,
     borderWidth: 2,
-    borderColor: COLORS.accentAmber,
+    borderColor: COLORS.brandRed,
     minHeight: 120,
     justifyContent: 'center',
   },
   responseLabel: {
     fontSize: 14,
     fontWeight: '900',
-    color: COLORS.accentAmber,
+    color: COLORS.brandRed,
     letterSpacing: 1.5,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   responseText: {
     fontSize: 22,
@@ -169,47 +147,46 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
+    gap: 12,
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: COLORS.surface,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
-    minHeight: 52,
+    minHeight: 56,
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '900',
     color: COLORS.textPrimary,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   gestureGuideCard: {
-    backgroundColor: '#0F0F12',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#26262C',
-    marginTop: 8,
+    backgroundColor: '#111114',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.surfaceBorder,
+    marginTop: 4,
   },
   guideTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.accentAmber,
-    letterSpacing: 1.2,
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '900',
+    color: COLORS.brandRed,
+    letterSpacing: 1.5,
+    marginBottom: 10,
   },
   guideText: {
     fontSize: 15,
     fontWeight: '500',
-    color: COLORS.textMuted,
-    lineHeight: 24,
+    color: COLORS.textSecondary,
+    lineHeight: 25,
   },
 });
