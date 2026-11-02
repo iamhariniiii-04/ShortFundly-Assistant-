@@ -18,6 +18,8 @@ class SpeechRecognitionManager {
     this.subscriptions = [];
     this.autoRestart = false;
     this.currentLanguage = 'en-US';
+    this.restartTimer = null;
+    this.isRestarting = false;
 
     this.initNativeListeners();
   }
@@ -25,18 +27,22 @@ class SpeechRecognitionManager {
   isAvailable() {
     return Boolean(
       ExpoSpeechRecognitionModule &&
-      typeof ExpoSpeechRecognitionModule.start === 'function'
+      typeof ExpoSpeechRecognitionModule.start === 'function' &&
+      typeof ExpoSpeechRecognitionModule.addListener === 'function'
     );
   }
 
   async checkAndRequestPermissions() {
     if (!this.isAvailable()) return false;
     try {
-      const perms = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      this.hasPermission = perms.granted;
-      return perms.granted;
+      if (typeof ExpoSpeechRecognitionModule.requestPermissionsAsync === 'function') {
+        const perms = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        this.hasPermission = Boolean(perms?.granted);
+        return this.hasPermission;
+      }
+      return true;
     } catch (e) {
-      console.warn('[SpeechRecognition] Permission request error:', e);
+      console.warn('[SpeechRecognition] Permission request error:', e?.message);
       return false;
     }
   }
@@ -45,56 +51,71 @@ class SpeechRecognitionManager {
     if (!this.isAvailable()) return;
 
     try {
+      // Clean up previous subscriptions if any
+      this.subscriptions.forEach((sub) => {
+        try { sub?.remove?.(); } catch (err) {}
+      });
+      this.subscriptions = [];
+
       const resSub = ExpoSpeechRecognitionModule.addListener('result', (event) => {
         const transcript =
-          event.results?.[0]?.transcript ||
-          (typeof event.results?.[0] === 'string' ? event.results[0] : '');
-        const isFinal = Boolean(event.isFinal);
+          event?.results?.[0]?.transcript ||
+          (typeof event?.results?.[0] === 'string' ? event.results[0] : '');
+        const isFinal = Boolean(event?.isFinal);
 
         this.notifyResult({
-          transcript: transcript.trim(),
+          transcript: (transcript || '').trim(),
           isFinal,
           raw: event,
         });
       });
 
+      const scheduleRestart = (delay = 500) => {
+        if (!this.autoRestart || this.isRestarting) return;
+        this.isRestarting = true;
+        if (this.restartTimer) {
+          clearTimeout(this.restartTimer);
+          this.restartTimer = null;
+        }
+        this.restartTimer = setTimeout(async () => {
+          this.isRestarting = false;
+          if (this.autoRestart) {
+            await this.start({
+              lang: this.currentLanguage,
+              continuous: true,
+              autoRestart: true,
+            });
+          }
+        }, delay);
+      };
+
       const errSub = ExpoSpeechRecognitionModule.addListener('error', (event) => {
         console.log('[SpeechRecognition] Error event:', event?.error, event?.message);
         this.notifyError(event);
-
-        // Auto restart continuous listening if enabled and not aborted intentionally
-        if (this.autoRestart && this.isListening) {
-          setTimeout(() => {
-            if (this.autoRestart) {
-              this.start({ lang: this.currentLanguage, continuous: true });
-            }
-          }, 800);
-        }
+        // Error 6 (speech timeout) and Error 7 (no match) are normal in background listening
+        scheduleRestart(500);
       });
 
       const endSub = ExpoSpeechRecognitionModule.addListener('end', () => {
         this.isListening = false;
         this.notifyState(false);
-
-        // Auto restart for always-on wake word mode
-        if (this.autoRestart) {
-          setTimeout(() => {
-            if (this.autoRestart) {
-              this.start({ lang: this.currentLanguage, continuous: true });
-            }
-          }, 500);
-        }
+        scheduleRestart(350);
       });
 
-      this.subscriptions = [resSub, errSub, endSub];
+      this.subscriptions = [resSub, errSub, endSub].filter(Boolean);
     } catch (e) {
-      console.warn('[SpeechRecognition] Failed to attach native listeners:', e);
+      console.warn('[SpeechRecognition] Failed to attach native listeners:', e?.message);
     }
   }
 
   async start({ lang = 'en-US', continuous = true, autoRestart = false } = {}) {
     this.currentLanguage = lang;
     this.autoRestart = autoRestart;
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
 
     if (!this.isAvailable()) {
       console.log('[SpeechRecognition] Module not available, skipping start');
@@ -108,6 +129,13 @@ class SpeechRecognitionManager {
         return false;
       }
 
+      // Safely abort lingering session before starting fresh
+      try {
+        if (typeof ExpoSpeechRecognitionModule.abort === 'function') {
+          ExpoSpeechRecognitionModule.abort();
+        }
+      } catch (err) {}
+
       await ExpoSpeechRecognitionModule.start({
         lang,
         interimResults: true,
@@ -119,22 +147,70 @@ class SpeechRecognitionManager {
       this.notifyState(true);
       return true;
     } catch (e) {
-      console.warn('[SpeechRecognition] Failed to start native recognizer:', e);
+      console.warn('[SpeechRecognition] Failed to start native recognizer:', e?.message);
       this.isListening = false;
       this.notifyState(false);
       return false;
     }
   }
 
-  async stop() {
-    this.autoRestart = false;
-    if (!this.isAvailable()) return;
+  // Temporarily pause recognition (e.g. while Assi is speaking) without clearing autoRestart flag
+  async pause() {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+    this.isRestarting = false;
 
+    if (!this.isAvailable()) return;
     try {
-      await ExpoSpeechRecognitionModule.stop();
+      if (typeof ExpoSpeechRecognitionModule.stop === 'function') {
+        await ExpoSpeechRecognitionModule.stop();
+      }
     } catch (e) {
       try {
-        await ExpoSpeechRecognitionModule.abort();
+        if (typeof ExpoSpeechRecognitionModule.abort === 'function') {
+          await ExpoSpeechRecognitionModule.abort();
+        }
+      } catch (err) {}
+    }
+    this.isListening = false;
+    this.notifyState(false);
+  }
+
+  // Resume continuous listening after speaking ends
+  async resume() {
+    if (!this.autoRestart) return false;
+    return await this.start({
+      lang: this.currentLanguage,
+      continuous: true,
+      autoRestart: true,
+    });
+  }
+
+  async stop() {
+    this.autoRestart = false;
+    this.isRestarting = false;
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+
+    if (!this.isAvailable()) {
+      this.isListening = false;
+      this.notifyState(false);
+      return;
+    }
+
+    try {
+      if (typeof ExpoSpeechRecognitionModule.stop === 'function') {
+        await ExpoSpeechRecognitionModule.stop();
+      }
+    } catch (e) {
+      try {
+        if (typeof ExpoSpeechRecognitionModule.abort === 'function') {
+          await ExpoSpeechRecognitionModule.abort();
+        }
       } catch (err) {}
     }
     this.isListening = false;

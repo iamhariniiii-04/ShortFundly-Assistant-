@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../config/constants';
@@ -26,6 +27,16 @@ class ReminderManager {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('assi_reminders', {
+          name: 'Assi Reminders',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          sound: 'default',
+        });
+      }
+
       this.initDone = true;
     } catch (e) {
       console.warn('Notifications permission note:', e);
@@ -33,17 +44,21 @@ class ReminderManager {
   }
 
   // Parse voice reminder command:
-  // e.g. "Remind me to take medicine at 8 PM", "Remind me to drink water in 15 minutes"
+  // e.g. "Remind me to take medicine at 8 PM", "set a reminder at 4:00 p.m.", "Remind me to drink water in 15 minutes"
   parseReminder(query) {
-    const q = query.toLowerCase().trim();
+    let q = (query || '')
+      .toLowerCase()
+      .replace(/p\.m\./gi, 'pm')
+      .replace(/a\.m\./gi, 'am')
+      .trim();
 
-    // Remove prefix "remind me to", "remind me about", "set a reminder to"
-    const cleaned = q.replace(/^(?:hey bro|bro|please|can you)?\s*(?:set a reminder to|remind me to|remind me about|remind me|reminder for)\s+/i, '');
+    // Remove prefix "remind me to", "remind me about", "set a reminder at", "set a reminder to"
+    const cleaned = q.replace(/^(?:hey assi|assi|please|can you)?\s*(?:set a reminder (?:at|to|for|about)?|remind me (?:at|to|for|about)?|reminder for)\s*/i, '');
 
     // Check relative minutes: "in 10 minutes", "in 1 hour"
-    const inTimeMatch = cleaned.match(/(.+?)\s+in\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs)/i);
+    const inTimeMatch = cleaned.match(/(?:(.+?)\s+)?in\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs)/i);
     if (inTimeMatch) {
-      const title = inTimeMatch[1].trim();
+      const title = (inTimeMatch[1] || 'Reminder').trim();
       const amount = parseInt(inTimeMatch[2], 10);
       const unit = inTimeMatch[3].toLowerCase();
       const delayMs = unit.startsWith('h') ? amount * 3600 * 1000 : amount * 60 * 1000;
@@ -56,10 +71,13 @@ class ReminderManager {
       };
     }
 
-    // Check specific time: "at 8 pm", "at 10:30 am"
-    const atTimeMatch = cleaned.match(/(.+?)\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    // Check specific time: "at 8 pm", "at 4:00 pm", "4:00 pm", or "at 4 pm to drink water"
+    const atTimeMatch = cleaned.match(/(?:(.+?)\s+)?(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)(?:\s+(?:to\s+)?(.+))?/i);
     if (atTimeMatch) {
-      const title = atTimeMatch[1].trim();
+      const prefixTitle = atTimeMatch[1] ? atTimeMatch[1].trim() : '';
+      const postfixTitle = atTimeMatch[5] ? atTimeMatch[5].trim() : '';
+      const title = postfixTitle || prefixTitle || 'Reminder';
+
       let hour = parseInt(atTimeMatch[2], 10);
       const minute = atTimeMatch[3] ? parseInt(atTimeMatch[3], 10) : 0;
       const meridian = atTimeMatch[4] ? atTimeMatch[4].toLowerCase() : null;
@@ -102,14 +120,16 @@ class ReminderManager {
     try {
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Hey Bro — Reminder 🔔',
+          title: 'Assi — Reminder 🔔',
           body: parsed.title,
           sound: true,
           priority: Notifications.AndroidNotificationPriority.HIGH,
           vibrate: [0, 250, 250, 250],
         },
         trigger: {
-          seconds: secondsUntil,
+          type: Notifications.SchedulableTriggerInputTypes?.DATE || 'date',
+          date: parsed.targetDate,
+          channelId: 'assi_reminders',
         },
       });
 
@@ -131,7 +151,7 @@ class ReminderManager {
       if (language === 'ta') {
         reply = `${parsed.humanTime} மணிக்கு "${parsed.title}" பற்றிய நினைவூட்டல் பதிவு செய்யப்பட்டது.`;
       } else if (language === 'tanglish') {
-        reply = `${parsed.humanTime} ku "${parsed.title}" reminder set panniyachu bro.`;
+        reply = `${parsed.humanTime} ku "${parsed.title}" reminder set panniyachu.`;
       }
 
       await SpeechService.speak(reply, { preferredLang: language });
@@ -169,7 +189,7 @@ class ReminderManager {
     if (list.length === 0) {
       let emptyMsg = 'You have no upcoming reminders.';
       if (language === 'ta') emptyMsg = 'வரவிருக்கும் நினைவூட்டல்கள் எதுவும் இல்லை.';
-      else if (language === 'tanglish') emptyMsg = 'Upcoming reminders edhum illa bro.';
+      else if (language === 'tanglish') emptyMsg = 'Upcoming reminders edhum illa.';
       await SpeechService.speak(emptyMsg, { preferredLang: language });
       return { success: true, count: 0, reply: emptyMsg };
     }

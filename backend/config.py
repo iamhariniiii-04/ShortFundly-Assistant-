@@ -29,7 +29,7 @@ class Config:
 
     # Google Gemini
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash').strip()
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash').strip()
 
     # OpenWeather
     OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '').strip()
@@ -39,4 +39,4 @@ class Config:
     SHERPA_MODELS_DIR = os.environ.get('SHERPA_MODELS_DIR', str(BASE_DIR / 'sherpa_models'))
 
     # CORS
-    CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5000', 'capacitor://localhost', 'http://localhost']
+    CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5000', 'http://10.0.2.2:5000', 'capacitor://localhost', 'http://localhost', '*']

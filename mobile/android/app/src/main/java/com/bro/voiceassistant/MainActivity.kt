@@ -1,7 +1,8 @@
-package com.shortfundly.voiceassistant
+package com.bro.voiceassistant
 
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -15,8 +16,28 @@ class MainActivity : ReactActivity() {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
     // This is required for expo-splash-screen.
-    setTheme(R.style.AppTheme)
+    setTheme(R.style.AppTheme);
     super.onCreate(null)
+
+    // Allow waking screen and showing directly over lockscreen when triggered via hardware button
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+      setShowWhenLocked(true)
+      setTurnScreenOn(true)
+    } else {
+      @Suppress("DEPRECATION")
+      window.addFlags(
+        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+      )
+    }
+
+    // Start background voice assistant foreground service
+    try {
+      BroVoiceForegroundService.startService(this)
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
   }
 
   /**

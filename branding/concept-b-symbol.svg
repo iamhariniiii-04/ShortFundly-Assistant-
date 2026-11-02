@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-b">
+  <title id="title-b">Hey Bro - Monogram B Acoustic Horizon Symbol</title>
+  <!-- Vertical Anchor Spine -->
+  <rect x="61" y="38" width="34" height="180" rx="17" fill="#0f172a"/>
+  <!-- Upper Acoustic Bowl -->
+  <path d="M 95 55 H 151 A 28 28 0 0 1 151 111 H 95" fill="none" stroke="#0f172a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Lower Acoustic Bowl (Typographic Grounding) -->
+  <path d="M 95 127 H 157 A 37 37 0 0 1 157 201 H 95" fill="none" stroke="#0f172a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

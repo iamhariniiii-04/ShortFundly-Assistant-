@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 
-export const HapticService = {
-  // Wake word triggered ("Hey Bro") -> Double heavy impact
+const rawHapticService = {
+  // Wake word triggered ("Hey Assi") -> Double heavy impact
   onWakeWord: async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -67,4 +67,56 @@ export const HapticService = {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch (e) {}
   },
+
+  // Stop / Silence speech
+  onStop: async () => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+  },
+
+  // Hold to talk initiated
+  onHoldToTalk: async () => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch (e) {}
+  },
+
+  // Double tap gesture
+  onDoubleTap: async () => {
+    try {
+      await Haptics.selectionAsync();
+    } catch (e) {}
+  },
+
+  // Toggle switch or mode
+  onToggle: async () => {
+    try {
+      await Haptics.selectionAsync();
+    } catch (e) {}
+  },
+
+  // Reminder trigger
+  onReminder: async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch (e) {}
+  },
+
+  // Notification received
+  onNotification: async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch (e) {}
+  },
 };
+
+// Safe Proxy guard: Any unspecified method call safely returns a no-op function instead of throwing TypeError
+export const HapticService = new Proxy(rawHapticService, {
+  get(target, prop) {
+    if (prop in target) {
+      return target[prop];
+    }
+    return async () => {};
+  },
+});

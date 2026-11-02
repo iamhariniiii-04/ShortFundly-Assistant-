@@ -15,7 +15,7 @@ export const InformationService = {
       const ampm = now.getHours() >= 12 ? 'பிற்பகல்' : 'முற்பகல்';
       reply = `இப்போது நேரம் ${ampm} ${hours} மணி ${minutes > 0 ? minutes + ' நிமிடங்கள்' : ''}.`;
     } else if (language === 'tanglish') {
-      reply = `Ippo time ${timeStr} aagudhu bro.`;
+      reply = `Ippo time ${timeStr} aagudhu.`;
     }
 
     return { success: true, type: 'time', reply, timeStr };
@@ -35,7 +35,7 @@ export const InformationService = {
       const monthName = monthsTa[now.getMonth()];
       reply = `இன்று ${dayName}, ${monthName} ${now.getDate()}, ${now.getFullYear()}.`;
     } else if (language === 'tanglish') {
-      reply = `Innikku ${dateStr} bro.`;
+      reply = `Innikku ${dateStr}.`;
     }
 
     return { success: true, type: 'date', reply, dateStr };
@@ -65,7 +65,7 @@ export const InformationService = {
 
       let reply = `The answer is ${rounded}.`;
       if (language === 'ta') reply = `விடை ${rounded}.`;
-      else if (language === 'tanglish') reply = `Answer ${rounded} bro.`;
+      else if (language === 'tanglish') reply = `Answer ${rounded}.`;
 
       HapticService.onSuccess();
       return { success: true, type: 'math', result: rounded, reply };
@@ -132,7 +132,7 @@ export const InformationService = {
         if (language === 'ta') {
           reply = `${city} நகரில் தற்போது வெப்பநிலை ${temp} டிகிரி செல்சியஸ், காற்றின் ஈரப்பதம் ${humidity} சதவீதம் மற்றும் காற்றின் வேகம் மணிக்கு ${wind} கிலோமீட்டர்.`;
         } else if (language === 'tanglish') {
-          reply = `${city} la ippo temperature ${temp} degree Celsius, humidity ${humidity}% irukku bro.`;
+          reply = `${city} la ippo temperature ${temp} degree Celsius, humidity ${humidity}% irukku.`;
         }
 
         HapticService.onSuccess();

@@ -1,3 +1,4 @@
+import { Platform, NativeModules } from 'react-native';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HapticService } from './hapticService';
@@ -119,6 +120,22 @@ export const CallMessageService = {
     }
 
     try {
+      // 1. Search actual Android device contacts via AssiBridge
+      if (NativeModules.AssiBridge?.searchContact) {
+        try {
+          const deviceResults = await NativeModules.AssiBridge.searchContact(clean);
+          if (Array.isArray(deviceResults) && deviceResults.length > 0 && deviceResults[0].phoneNumber) {
+            return {
+              name: deviceResults[0].name || nameOrQuery,
+              phoneNumber: deviceResults[0].phoneNumber,
+            };
+          }
+        } catch (contactErr) {
+          console.warn('[CallMessage] Device contact search error:', contactErr);
+        }
+      }
+
+      // 2. Search local voice-saved contacts
       const contacts = await this.getSavedContacts();
 
       // Normalize common aliases
@@ -154,25 +171,70 @@ export const CallMessageService = {
 
   // Parse message intent
   parseMessageIntent(query) {
+    if (!query || typeof query !== 'string') return null;
     const q = query.trim();
-    const isWhatsApp = /whatsapp/i.test(q);
+    const isWhatsApp = /whatsapp|வாட்ஸ்அப்/i.test(q);
 
-    const match1 = q.match(/(?:send\s+a?\s*message|message|text|whatsapp)\s+to\s+([^,]+?)\s+(?:saying|that|with text|message)\s+(.+)/i);
-    const match2 = q.match(/(?:send\s+a?\s*message|message|text|whatsapp)\s+to\s+([^,]+)/i);
+    // Strip leading conversational prefixes: "open messenger and", "open messages and", "can you please"
+    let clean = q.replace(/^(?:hey assi|assi|please|can you|could you)?\s*(?:open (?:the )?(?:messenger|messages|sms|whatsapp) (?:and|,)?\s*)?/i, '').trim();
 
+    // Pattern 1: "send <content> (sms|message|text) to <recipient>" (e.g. "send Hi SMS to Harish")
+    const match1 = clean.match(/^send\s+(.+?)\s+(?:sms|message|text|whatsapp)\s+to\s+([a-zA-Z0-9\s]+)$/i);
     if (match1) {
       return {
         type: 'message',
         platform: isWhatsApp ? 'whatsapp' : 'sms',
-        recipient: match1[1].trim(),
-        content: match1[2].trim(),
+        recipient: match1[2].trim(),
+        content: match1[1].trim(),
       };
-    } else if (match2) {
+    }
+
+    // Pattern 2: "send (sms|message|text) to <recipient> (saying|that|with text|message|:) <content>"
+    const match2 = clean.match(/^(?:send\s+a?\s*)?(?:sms|message|text|whatsapp)\s+to\s+([^,]+?)\s+(?:saying|that|with text|with message|message|:)\s+(.+)$/i);
+    if (match2) {
       return {
         type: 'message',
         platform: isWhatsApp ? 'whatsapp' : 'sms',
         recipient: match2[1].trim(),
-        content: '',
+        content: match2[2].trim(),
+      };
+    }
+
+    // Pattern 3: "send <content> to <recipient>" (e.g. "send hi to Harish")
+    const match3 = clean.match(/^send\s+(.+?)\s+to\s+([a-zA-Z0-9\s]+)$/i);
+    if (match3) {
+      const recip = match3[2].trim();
+      const cont = match3[1].trim();
+      const nonContacts = ['spotify', 'youtube', 'chrome', 'browser', 'google', 'camera'];
+      if (!nonContacts.includes(recip.toLowerCase())) {
+        return {
+          type: 'message',
+          platform: isWhatsApp ? 'whatsapp' : 'sms',
+          recipient: recip,
+          content: cont,
+        };
+      }
+    }
+
+    // Pattern 4: "send (sms|message|text|whatsapp) to <recipient>" (without content specified)
+    const match4 = clean.match(/^(?:send\s+a?\s*)?(?:sms|message|text|whatsapp)\s+to\s+([^,]+)$/i);
+    if (match4) {
+      return {
+        type: 'message',
+        platform: isWhatsApp ? 'whatsapp' : 'sms',
+        recipient: match4[1].trim(),
+        content: 'Hi',
+      };
+    }
+
+    // Pattern 5: "text/message/whatsapp <recipient> <content>"
+    const match5 = clean.match(/^(?:text|message|whatsapp)\s+([a-zA-Z0-9]+)\s+(.+)$/i);
+    if (match5) {
+      return {
+        type: 'message',
+        platform: isWhatsApp ? 'whatsapp' : 'sms',
+        recipient: match5[1].trim(),
+        content: match5[2].trim(),
       };
     }
 
@@ -192,7 +254,7 @@ export const CallMessageService = {
     if (language === 'ta') {
       prompt = `நீங்கள் ${resolvedName} என்பவரை அழைக்க விரும்புகிறீர்கள். இப்போது அழைக்கவா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`;
     } else if (language === 'tanglish') {
-      prompt = `${resolvedName} ku call panna porom bro. Call panna vaa? Yes or No sollunga.`;
+      prompt = `${resolvedName} ku call panna porom. Call panna vaa? Yes or No sollunga.`;
     }
 
     return {
@@ -241,6 +303,23 @@ export const CallMessageService = {
     }
 
     try {
+      // 1. Try direct Android ACTION_CALL via AssiBridge
+      if (NativeModules.AssiBridge?.makeDirectCall) {
+        try {
+          const called = await NativeModules.AssiBridge.makeDirectCall(phoneNumber);
+          if (called) {
+            HapticService.onSuccess();
+            return {
+              success: true,
+              reply: `Calling ${targetName} now.`,
+            };
+          }
+        } catch (bridgeCallErr) {
+          console.warn('[CallMessage] AssiBridge direct call failed, falling back:', bridgeCallErr);
+        }
+      }
+
+      // 2. Linking url fallback
       const url = `tel:${phoneNumber}`;
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
@@ -270,7 +349,7 @@ export const CallMessageService = {
     if (language === 'ta') {
       prompt = `${recipient} என்பவருக்கு "${content}" என்று ${serviceName} செய்தி அனுப்பவா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`;
     } else if (language === 'tanglish') {
-      prompt = `${recipient} ku "${content}" nu ${serviceName} message anuppava bro? Yes or No sollunga.`;
+      prompt = `${recipient} ku "${content}" nu ${serviceName} message anuppava? Yes or No sollunga.`;
     }
 
     return {
@@ -319,5 +398,44 @@ export const CallMessageService = {
         reply: `Could not send message: ${e.message}`,
       };
     }
+  },
+
+  // Send voice note via WhatsApp audio intent
+  async sendVoiceNote(recipient, language = 'en') {
+    HapticService.onProcessing();
+    const contact = await this.lookupContact(recipient);
+    const cleanNumber = contact ? contact.phoneNumber : recipient.replace(/[^\d+]/g, '');
+
+    try {
+      // Direct intent to WhatsApp conversation for voice recording
+      const waUrl = cleanNumber
+        ? `whatsapp://send?phone=${cleanNumber}`
+        : `whatsapp://send`;
+      const canOpen = await Linking.canOpenURL(waUrl);
+      if (canOpen) {
+        await Linking.openURL(waUrl);
+        HapticService.onSuccess();
+        const reply = language === 'ta'
+          ? `${recipient} என்பவருக்கு குரல் செய்தி அனுப்ப வாட்ஸ்அப் திறக்கப்படுகிறது.`
+          : `Opening WhatsApp conversation with ${recipient} to send your voice note.`;
+        await SpeechService.speak(reply, { preferredLang: language });
+        return { success: true, reply };
+      }
+    } catch (e) {}
+
+    return { success: false, reply: 'Could not launch voice note sender.' };
+  },
+
+  // Announce incoming call aloud for visually impaired users
+  async announceIncomingCall(callerNameOrNumber, language = 'en') {
+    HapticService.onConfirmationRequired();
+    let prompt = `Incoming call from ${callerNameOrNumber || 'Unknown caller'}.`;
+    if (language === 'ta') {
+      prompt = `${callerNameOrNumber || 'அறியப்படாத எண்'} என்பவரிடமிருந்து அழைப்பு வருகிறது.`;
+    } else if (language === 'tanglish') {
+      prompt = `${callerNameOrNumber || 'Unknown number'} kitta irundhu call varudhu.`;
+    }
+    await SpeechService.speak(prompt, { preferredLang: language });
+    return { success: true, prompt };
   },
 };

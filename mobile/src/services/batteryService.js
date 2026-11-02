@@ -51,6 +51,11 @@ class BatteryManager {
     };
   }
 
+  async getLevel() {
+    const s = await this.getStatus();
+    return s.percentage;
+  }
+
   // Generate spoken status message
   async announceStatus(language = 'en') {
     const status = await this.getStatus();
@@ -66,7 +71,7 @@ class BatteryManager {
       const stateTang = status.stateText === 'charging' 
         ? 'charging aagudhu' 
         : 'discharging la irukku';
-      reply = `Battery ${pct} percent irukku bro.`;
+      reply = `Battery ${pct} percent irukku.`;
     } else {
       reply = `Your battery is at ${pct} percent and ${status.stateText}.`;
     }
@@ -75,7 +80,7 @@ class BatteryManager {
       if (language === 'ta') {
         reply += ' எச்சரிக்கை: பேட்டரி குறைவாக உள்ளது. உடனே சார்ஜரை இணைக்கவும்.';
       } else if (language === 'tanglish') {
-        reply += ' Warning bro: Battery romba low. Charger connect pannunga.';
+        reply += ' Warning: Battery romba low. Charger connect pannunga.';
       } else {
         reply += ' Warning: Battery is low. Please connect your charger.';
       }
@@ -89,7 +94,7 @@ class BatteryManager {
   }
 
   // Start background monitoring for low battery alerts
-  startMonitor(onAlert) {
+  startMonitor(onAlert, language = 'en') {
     if (this.subscription) return;
 
     try {
@@ -98,6 +103,19 @@ class BatteryManager {
           const percentage = Math.round(batteryLevel * 100);
           this.lastKnownLevel = percentage;
           if (onAlert) onAlert({ percentage });
+
+          // Proactive spoken alert when dropping to or below 20%
+          if (percentage <= 20 && !this.hasWarnedLow && !this.isCharging) {
+            this.hasWarnedLow = true;
+            HapticService.onLowBatteryAlert();
+            let alertMsg = `Warning: battery has dropped to ${percentage} percent. Please plug in your charger.`;
+            if (language === 'ta') {
+              alertMsg = `எச்சரிக்கை: பேட்டரி ${percentage} சதவீதமாக குறைந்துவிட்டது. உடனே சார்ஜரை இணைக்கவும்.`;
+            }
+            await SpeechService.speak(alertMsg, { preferredLang: language });
+          } else if (percentage > 25) {
+            this.hasWarnedLow = false;
+          }
         }
       });
     } catch (e) {}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">Hey Bro - Guiding Aura Sensory Shield Symbol</title>
+  <!-- Outer Protective Guardian Canopy -->
+  <path d="M 38 116 A 104 104 0 0 1 218 116" fill="none" stroke="#0f172a" stroke-width="24" stroke-linecap="round"/>
+  <!-- Middle Sensory Wave -->
+  <path d="M 82 129.4 A 60 60 0 0 1 174 129.4" fill="none" stroke="#0f172a" stroke-width="18" stroke-linecap="round"/>
+  <!-- Core Guiding Beacon -->
+  <circle cx="128" cy="168" r="26" fill="#0f172a"/>
+</svg>

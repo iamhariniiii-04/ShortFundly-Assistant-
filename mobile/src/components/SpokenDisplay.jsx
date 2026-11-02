@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { RotateCcw, Square } from 'lucide-react-native';
+import { RotateCcw, VolumeX, Sparkles, Hand } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 
 export function SpokenDisplay({
@@ -14,6 +14,7 @@ export function SpokenDisplay({
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
       accessible={true}
       accessibilityLabel="Voice feedback and response display"
     >
@@ -24,7 +25,7 @@ export function SpokenDisplay({
           accessible={true}
           accessibilityLabel={`You said: ${lastQuery}`}
         >
-          <Text style={styles.cardLabel}>YOU SAID:</Text>
+          <Text style={styles.cardLabel}>YOU SAID</Text>
           <Text style={styles.queryText}>{lastQuery}</Text>
         </View>
       ) : null}
@@ -34,44 +35,55 @@ export function SpokenDisplay({
         style={styles.responseCard}
         accessible={true}
         accessibilityLiveRegion="polite"
-        accessibilityLabel={`My Bro reply: ${lastResponse || 'Say "Hey Bro" or tap the center button to begin.'}`}
+        accessibilityLabel={`Assi reply: ${lastResponse || 'Say "Hey Assi" or tap the center mascot to begin.'}`}
       >
-        <Text style={styles.responseLabel}>MY BRO:</Text>
+        <View style={styles.responseHeaderRow}>
+          <Text style={styles.responseLabel}>ASSI</Text>
+          <Sparkles size={14} color={COLORS.brandPrimary} />
+        </View>
         <Text style={styles.responseText}>
-          {lastResponse || 'Say "Hey Bro" or tap the center button to give a voice command.'}
+          {lastResponse || 'Say "Hey Assi" or tap the center mascot to speak.'}
         </Text>
       </View>
 
-      {/* Primary Voice Controls: Repeat & Stop (Large, non-cramped tactile targets) */}
+      {/* Speech Audio Actions: Repeat & Silence */}
       <View style={styles.actionRow}>
-        {/* Repeat Button */}
         <TouchableOpacity
           onPress={onRepeat}
+          activeOpacity={0.8}
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel="Repeat last response. Double-tapping anywhere on screen also repeats."
           style={styles.actionButton}
         >
-          <RotateCcw size={22} color={COLORS.brandRed} />
+          <RotateCcw size={18} color={COLORS.brandPrimary} />
           <Text style={styles.actionButtonText}>REPEAT</Text>
         </TouchableOpacity>
 
-        {/* Stop / Silence Button */}
         <TouchableOpacity
           onPress={onStop}
+          activeOpacity={0.8}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Stop speech playback."
+          accessibilityLabel="Stop speech playback"
           style={[
             styles.actionButton,
-            isSpeaking && { borderColor: COLORS.brandRed, backgroundColor: COLORS.brandRedDark },
+            isSpeaking && { borderColor: COLORS.danger, backgroundColor: '#FEE2E2' },
           ]}
         >
-          <Square size={20} color={isSpeaking ? COLORS.brandRed : COLORS.textPrimary} />
-          <Text style={[styles.actionButtonText, isSpeaking && { color: COLORS.brandRed }]}>
+          <VolumeX size={18} color={isSpeaking ? COLORS.danger : COLORS.textPrimary} />
+          <Text style={[styles.actionButtonText, isSpeaking && { color: COLORS.danger }]}>
             {isSpeaking ? 'STOP SPEECH' : 'SILENCE'}
           </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Discreet Tactile Gesture Guide */}
+      <View style={styles.gestureGuideCard}>
+        <Hand size={14} color={COLORS.textMuted} />
+        <Text style={styles.gestureGuideText}>
+          Single tap to speak • Double tap to repeat • Swipe down to silence
+        </Text>
       </View>
     </ScrollView>
   );
@@ -84,49 +96,64 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 28,
-    gap: 16,
+    gap: 12,
   },
   queryCard: {
-    backgroundColor: '#141418',
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
+    shadowColor: COLORS.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   cardLabel: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '900',
     color: COLORS.textMuted,
     letterSpacing: 1.2,
     marginBottom: 4,
   },
   queryText: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    lineHeight: 26,
+    lineHeight: 23,
   },
   responseCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 20,
     borderWidth: 2,
-    borderColor: COLORS.brandRed,
+    borderColor: COLORS.brandPrimary,
     minHeight: 120,
     justifyContent: 'center',
+    shadowColor: COLORS.brandPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  responseHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
   },
   responseLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
-    color: COLORS.brandRed,
+    color: COLORS.brandPrimary,
     letterSpacing: 1.5,
-    marginBottom: 8,
   },
   responseText: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: COLORS.textPrimary,
-    lineHeight: 32,
+    lineHeight: 28,
   },
   actionRow: {
     flexDirection: 'row',
@@ -139,37 +166,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: COLORS.surface,
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
-    minHeight: 56,
+    minHeight: 50,
+    shadowColor: COLORS.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 1,
   },
   actionButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '900',
     color: COLORS.textPrimary,
     letterSpacing: 1,
   },
   gestureGuideCard: {
-    backgroundColor: '#111114',
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: COLORS.surfaceBorder,
-    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.brandPrimaryLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 70, 229, 0.15)',
   },
-  guideTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: COLORS.brandRed,
-    letterSpacing: 1.5,
-    marginBottom: 10,
-  },
-  guideText: {
-    fontSize: 15,
-    fontWeight: '500',
+  gestureGuideText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: COLORS.textSecondary,
-    lineHeight: 25,
+    textAlign: 'center',
   },
 });

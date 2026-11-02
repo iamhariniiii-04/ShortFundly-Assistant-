@@ -3,9 +3,17 @@ import logging
 import requests
 from abc import ABC, abstractmethod
 from backend.config import Config
-from google import genai
-from google.genai import types
-from huggingface_hub import InferenceClient
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
+
+try:
+    from huggingface_hub import InferenceClient
+except ImportError:
+    InferenceClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +60,7 @@ class GeminiProvider(BaseAIProvider):
         return "Google Gemini (Free Tier)"
 
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return bool(genai and self.api_key)
 
     def chat(self, message: str, conversation_history: list = None, language: str = "auto", use_search: bool = False) -> dict:
         if not self.is_available():

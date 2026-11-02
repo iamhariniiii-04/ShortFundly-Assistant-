@@ -3,11 +3,23 @@ import io
 import time
 import wave
 import logging
-import soundfile as sf
-import numpy as np
 from pathlib import Path
-import sherpa_onnx
 from backend.config import Config
+
+try:
+    import soundfile as sf
+except ImportError:
+    sf = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    import sherpa_onnx
+except ImportError:
+    sherpa_onnx = None
 
 logger = logging.getLogger(__name__)
 

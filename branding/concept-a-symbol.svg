@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-a">
+  <title id="title-a">Hey Bro - Acoustic Beacon Symbol</title>
+  <circle cx="83" cy="128" r="26" fill="#0f172a"/>
+  <path d="M 127 76.16 A 68 68 0 0 1 127 179.84" fill="none" stroke="#0f172a" stroke-width="22" stroke-linecap="round"/>
+  <path d="M 159 40.37 A 116 116 0 0 1 159 215.63" fill="none" stroke="#0f172a" stroke-width="22" stroke-linecap="round"/>
+</svg>

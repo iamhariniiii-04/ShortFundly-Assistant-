@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 256" width="720" height="256" role="img" aria-labelledby="title-b-lockup">
+  <title id="title-b-lockup">Hey Bro - Monogram B Horizontal Lockup</title>
+  <!-- Symbol -->
+  <g transform="translate(16, 0)">
+    <rect x="61" y="38" width="34" height="180" rx="17" fill="#0f172a"/>
+    <path d="M 95 55 H 151 A 28 28 0 0 1 151 111 H 95" fill="none" stroke="#0f172a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 95 127 H 157 A 37 37 0 0 1 157 201 H 95" fill="none" stroke="#0f172a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Wordmark -->
+  <g transform="translate(260, 0)">
+    <text x="0" y="132" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="76" font-weight="900" fill="#0f172a" letter-spacing="4">HEY BRO</text>
+    <text x="4" y="178" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="800" fill="#64748b" letter-spacing="8">VOICE ASSISTANT</text>
+  </g>
+</svg>

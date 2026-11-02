@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { BatteryCharging, Battery, Settings, Radio } from 'lucide-react-native';
 import { COLORS } from '../config/colors';
 
@@ -14,48 +14,62 @@ export function AccessibleHeader({
 
   return (
     <View style={styles.header}>
-      {/* ShortFundly Logo + "MY BRO" Branding */}
+      {/* Brand Identity: "ASSI" Glyph + Status */}
       <View style={styles.brandRow}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-          accessible={true}
-          accessibilityLabel="ShortFundly logo"
-        />
+        <View style={styles.logoBadge}>
+          <Text style={styles.logoGlyph}>✦</Text>
+        </View>
         <View style={styles.titleColumn}>
           <Text
             style={styles.appName}
             accessible={true}
             accessibilityRole="header"
-            accessibilityLabel="My Bro Voice Assistant"
+            accessibilityLabel="Assi Voice Assistant"
           >
-            MY BRO
+            ASSI
           </Text>
           {wakeWordEnabled && (
             <View
               style={styles.wakeBadge}
               accessible={true}
-              accessibilityLabel="Wake word Hey Bro is active"
+              accessibilityLabel="Wake word Hey Assi is active"
             >
-              <Radio size={12} color={COLORS.brandRed} />
-              <Text style={styles.wakeBadgeText}>WAKE ACTIVE</Text>
+              <Radio size={11} color={COLORS.brandRed} />
+              <Text style={styles.wakeBadgeText}>HEY ASSI READY</Text>
             </View>
           )}
         </View>
       </View>
 
-      {/* Header Controls: Settings */}
+      {/* Header Controls: Battery Pill + Accessible Settings */}
       <View style={styles.controlsRow}>
-        {/* Accessible Settings */}
+        {/* Battery Telemetry Pill */}
+        <TouchableOpacity
+          onPress={onBatteryPress}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Battery ${batteryLevel} percent ${isCharging ? ', charging' : ''}`}
+          style={[styles.batteryPill, isBatteryLow && styles.batteryPillLow]}
+        >
+          {isCharging ? (
+            <BatteryCharging size={16} color={COLORS.success} />
+          ) : (
+            <Battery size={16} color={isBatteryLow ? COLORS.danger : COLORS.textSecondary} />
+          )}
+          <Text style={[styles.batteryText, isBatteryLow && styles.batteryTextLow]}>
+            {`${batteryLevel}%`}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Settings Button */}
         <TouchableOpacity
           onPress={onSettingsPress}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Settings. Tap to open speech speed, language, reminders, and notifications."
+          accessibilityLabel="Open Assi settings"
           style={styles.settingsButton}
         >
-          <Settings size={22} color={COLORS.textPrimary} />
+          <Settings size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -67,29 +81,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 10 : 16,
     paddingBottom: 14,
     borderBottomWidth: 1.5,
     borderBottomColor: COLORS.surfaceBorder,
     backgroundColor: COLORS.canvas,
+    zIndex: 20,
+    elevation: 8,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  logoImage: {
+  logoBadge: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
+    backgroundColor: COLORS.brandPrimaryLight,
+    borderWidth: 2,
+    borderColor: COLORS.brandPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.brandPrimary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  logoGlyph: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.brandPrimary,
+    letterSpacing: -1,
   },
   titleColumn: {
     flexDirection: 'column',
-    gap: 3,
+    gap: 2,
   },
   appName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
     color: COLORS.textPrimary,
     letterSpacing: 2,
@@ -98,26 +130,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#1C0606',
+    backgroundColor: COLORS.brandPrimaryLight,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#4A0C0C',
+    borderColor: 'rgba(79, 70, 229, 0.2)',
     alignSelf: 'flex-start',
   },
   wakeBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    color: COLORS.brandRed,
-    letterSpacing: 1,
+    color: COLORS.brandPrimary,
+    letterSpacing: 0.8,
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  batteryButton: {
+  batteryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -127,12 +159,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: COLORS.surfaceBorder,
-    minHeight: 44,
+    shadowColor: COLORS.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  batteryPillLow: {
+    borderColor: COLORS.danger,
+    backgroundColor: '#FEE2E2',
   },
   batteryText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+  },
+  batteryTextLow: {
+    color: COLORS.danger,
   },
   settingsButton: {
     backgroundColor: COLORS.surface,
@@ -143,5 +186,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surfaceBorder,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
 });

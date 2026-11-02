@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.shortfundly.voiceassistant'
+    namespace 'com.bro.voiceassistant'
     defaultConfig {
-        applicationId 'com.shortfundly.voiceassistant'
+        applicationId 'com.bro.voiceassistant'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

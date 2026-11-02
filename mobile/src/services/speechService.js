@@ -35,7 +35,7 @@ class SpeechManager {
 
     // Tanglish detection (Common colloquial Tamil words in Latin script)
     const tanglishKeywords = [
-      'bro', 'vanakkam', 'eppadi', 'irukku', 'enna', 'solreenga', 'panreenga',
+      'assi', 'vanakkam', 'eppadi', 'irukku', 'enna', 'solreenga', 'panreenga',
       'nandri', 'neram', 'battery', 'mazhai', 'vanilai', 'aama', 'illa',
       'sari', 'theriyum', 'pesu', 'kodu', 'pannu'
     ];
